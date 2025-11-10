@@ -3,10 +3,13 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <assert.h>
 
 VkPhysicalDevice VULKAN_PHYSICAL_DEVICE_HANDLE;
 VkPhysicalDeviceProperties2 VULKAN_PHYSICAL_DEVICE_PROPERTIES;
 VkDevice VULKAN_DEVICE_HANDLE;
+VkQueue VULKAN_QUEUE_GRAPHICS;
+VkQueue VULKAN_QUEUE_TRANSFER;
 
 const char* deviceTypeToString(const VkPhysicalDeviceType* type) {
     switch(*type) {
@@ -55,23 +58,74 @@ void vulkan_device_init(const char* const* extProps, const uint32_t extCount){
     uint32_t deviceId;
     scanf("%" SCNu32, &deviceId);
 
+    uint32_t queueCount;
+    vkGetPhysicalDeviceQueueFamilyProperties2(devices[deviceId], &queueCount, 0);
+    VkQueueFamilyProperties2* queueProps = malloc(sizeof(VkQueueFamilyProperties2) * queueCount);
+    vkGetPhysicalDeviceQueueFamilyProperties2(devices[deviceId], &queueCount, queueProps);
+
+    uint32_t graphicId = 0, transferId = 0; 
+    float graphicPriorities[] = {1.0f}, transferPriorities[] = {1.0f};
+
+    for(int i = 0; i < queueCount; i++){
+        if(queueProps[queueCount].queueFamilyProperties.queueCount >= 1 & queueProps[queueCount].queueFamilyProperties.queueFlags == VK_QUEUE_GRAPHICS_BIT)
+            graphicId = i;
+        if(queueProps[queueCount].queueFamilyProperties.queueCount >= 1 & queueProps[queueCount].queueFamilyProperties.queueFlags == VK_QUEUE_TRANSFER_BIT)
+            transferId = i;
+    }
+
+    assert(graphicId && transferId);
+
+    VkDeviceQueueCreateInfo queueInfos[] = {
+        {
+            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+            .queueCount = 1,
+            .queueFamilyIndex = graphicId,
+            .pQueuePriorities = graphicPriorities,
+            .flags = 0,
+            .pNext = 0
+        },
+        {
+            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+            .queueCount = 1,
+            .queueFamilyIndex = transferId,
+            .pQueuePriorities = transferPriorities,
+            .flags = 0,
+            .pNext = 0
+        }
+    };
+
+    VkPhysicalDeviceFeatures supportedFeatures;
+    vkGetPhysicalDeviceFeatures(VULKAN_PHYSICAL_DEVICE_HANDLE, &supportedFeatures);
+
+    VkPhysicalDeviceFeatures enabledFeatures = {
+    };
+
     VkDeviceCreateInfo info = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .enabledExtensionCount = extCount,
         .ppEnabledExtensionNames = extProps,
-        .pEnabledFeatures = 0,
-        .queueCreateInfoCount = 0,
-        .pQueueCreateInfos = 0,
+        .pEnabledFeatures = &enabledFeatures,
+        .queueCreateInfoCount = 2,
+        .pQueueCreateInfos = queueInfos,
         .enabledLayerCount = 0,
         .ppEnabledLayerNames = 0,
         .flags = 0,
         .pNext = 0
     };
     
-    vkCreateDevice(devices[deviceId], );
+    if (vkCreateDevice(devices[deviceId], &info, 0, VULKAN_PHYSICAL_DEVICE_HANDLE) != VK_SUCCESS){
+        printf("device creation failed.\n");
+    }
+
+    vkGetDeviceQueue(VULKAN_DEVICE_HANDLE, graphicId, 0, &VULKAN_QUEUE_GRAPHICS);
+    vkGetDeviceQueue(VULKAN_DEVICE_HANDLE, transferId, 0, &VULKAN_QUEUE_TRANSFER);
 }
 
 void vulkan_device_cleanup(void){
+    vkDeviceWaitIdle(VULKAN_DEVICE_HANDLE);
+    vkDestroyDevice(VULKAN_DEVICE_HANDLE, 0);
 }
 
-void vulkan_device_show_extensions(void);
+void vulkan_device_show_extensions(void){
+
+}

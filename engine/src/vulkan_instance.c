@@ -52,6 +52,7 @@ void vulkan_instance_init(void){
 
     vkCreateInstance(&createInfo, 0, &VULKAN_INSTANCE_HANDLE);
     volkLoadInstance(VULKAN_INSTANCE_HANDLE);
+    vulkan_device_init(extensions, 2);
 }
 
 void vulkan_instance_cleanup(void){
