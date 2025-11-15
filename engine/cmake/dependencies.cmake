@@ -7,9 +7,11 @@ find_package(SDL2_mixer REQUIRED)
 find_package(SDL2_ttf REQUIRED)
 find_package(volk REQUIRED)
 find_package(json-c REQUIRED)
+find_package(cglm CONFIG REQUIRED)
 # END PACKAGES
 
 set(DEPENDENCIES
+    cglm::cglm
     volk::volk
     json-c::json-c
     SDL2::SDL2 

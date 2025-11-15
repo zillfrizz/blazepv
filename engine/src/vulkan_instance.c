@@ -4,10 +4,12 @@
 #include "tab.h"
 #include "string.h"
 #include "vulkan_device.h"
+#include <SDL_vulkan.h>
+#include <windows1.h>
 
 // Définition des méthodes ici
 
-VkInstance VULKAN_INSTANCE_HANDLE;
+VkInstance VULKAN_INSTANCE;
 
 void vulkan_instance_init(void){
     volkInitialize();
@@ -34,30 +36,44 @@ void vulkan_instance_init(void){
         "VK_LAYER_KHRONOS_validation"
     };
 
-    const char* extensions[] = {
+    #define HARD_EXTENSION_COUNT 3
+    const char* extensions1[] = {
         "VK_KHR_surface",
-        "VK_KHR_win32_surface"
+        "VK_KHR_win32_surface",
+        "VK_KHR_get_surface_capabilities2"
     };
+
+    unsigned int sdlExtCount = 0;
+    SDL_Vulkan_GetInstanceExtensions(WINDOW_HANDLE, &sdlExtCount, 0);
+    const char** extensions = malloc(sizeof(char*) * (sdlExtCount + HARD_EXTENSION_COUNT));
+    SDL_Vulkan_GetInstanceExtensions(WINDOW_HANDLE, &sdlExtCount, extensions);
+
+    for(int i = 0; i < HARD_EXTENSION_COUNT; i++){
+        extensions[sdlExtCount + i] = extensions1[i];
+    }
 
     VkInstanceCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pApplicationInfo = &appInfo,
         .enabledLayerCount = 1,
         .ppEnabledLayerNames = validationLayers,
-        .enabledExtensionCount = 2,
+        .enabledExtensionCount = sdlExtCount + HARD_EXTENSION_COUNT,
         .ppEnabledExtensionNames = extensions,
         .flags = 0,
         .pNext = 0
     };
 
-    vkCreateInstance(&createInfo, 0, &VULKAN_INSTANCE_HANDLE);
-    volkLoadInstance(VULKAN_INSTANCE_HANDLE);
-    vulkan_device_init(extensions, 2);
+    if(vkCreateInstance(&createInfo, 0, &VULKAN_INSTANCE) != VK_SUCCESS){
+        printf("Instance creation failed !\n");
+        exit(1);
+    };
+
+    volkLoadInstance(VULKAN_INSTANCE);
 }
 
 void vulkan_instance_cleanup(void){
     vulkan_device_cleanup();
-    vkDestroyInstance(VULKAN_INSTANCE_HANDLE, 0);
+    vkDestroyInstance(VULKAN_INSTANCE, 0);
 }
 
 void vulkan_instance_print_layers(void){

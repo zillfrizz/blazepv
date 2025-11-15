@@ -4,7 +4,7 @@
 #include <vulkan/vulkan.h>
 #include <volk.h>
 
-extern VkInstance VULKAN_INSTANCE_HANDLE;
+extern VkInstance VULKAN_INSTANCE;
 
 void vulkan_instance_init(void);
 void vulkan_instance_cleanup(void);

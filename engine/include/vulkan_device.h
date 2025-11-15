@@ -1,12 +1,22 @@
 #pragma once
+#define VK_NO_PROTOTYPES
 #include <vulkan/vulkan.h>
+#include <volk.h>
 
-extern VkPhysicalDevice VULKAN_PHYSICAL_DEVICE_HANDLE;
+// DEVICE
+extern VkPhysicalDevice VULKAN_PHYSICAL_DEVICE;
 extern VkPhysicalDeviceProperties2 VULKAN_PHYSICAL_DEVICE_PROPERTIES;
-extern VkDevice VULKAN_DEVICE_HANDLE;
+extern VkDevice VULKAN_DEVICE;
+
+// QUEUES
+extern uint32_t VULKAN_FAMILY_GRAPHICS;
+extern uint32_t VULKAN_FAMILY_TRANSFER;
+
 extern VkQueue VULKAN_QUEUE_GRAPHICS;
 extern VkQueue VULKAN_QUEUE_TRANSFER;
 
-void vulkan_device_init(const char* const* extProps, const uint32_t extCount);
+
+
+void vulkan_device_init();
 void vulkan_device_cleanup(void);
-void vulkan_device_show_extensions(void);
+uint32_t vulkan_device_get_memory_type(VkMemoryRequirements2* memReq2, VkMemoryPropertyFlags memFlags);

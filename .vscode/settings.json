@@ -59,6 +59,11 @@
         "variant": "cpp",
         "bitset": "cpp",
         "vulkan.h": "c",
-        "tab.h": "c"
+        "tab.h": "c",
+        "stdint.h": "c",
+        "stdlib.h": "c",
+        "vulkan_instance.h": "c",
+        "vulkan_swap_chain.h": "c",
+        "assert.h": "c"
     }
 }
