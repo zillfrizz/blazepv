@@ -11,7 +11,7 @@ void vulkan_renderpass_init(void){
         .sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
         .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-        .format = WINDOW_VULKAN_SURFACE_FORMAT.surfaceFormat.format,
+        .format = VULKAN_SURFACE_FORMAT.surfaceFormat.format,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,

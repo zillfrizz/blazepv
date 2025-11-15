@@ -171,12 +171,12 @@ VkPipeline create_graphics_pipeline(VkShaderModule vert, VkShaderModule frag, Vk
 
     VkViewport viewport = {
         .x = 0.0f, .y = 0.0f,
-        .width = WINDOW_VULKAN_SURFACE_EXTENT.width,
-        .height = WINDOW_VULKAN_SURFACE_EXTENT.height,
+        .width = VULKAN_SURFACE_EXTENT.width,
+        .height = VULKAN_SURFACE_EXTENT.height,
         .minDepth = 0.0f, .maxDepth = 1.0f
     };
 
-    VkRect2D scissor = { .offset = {0, 0}, .extent = WINDOW_VULKAN_SURFACE_EXTENT };
+    VkRect2D scissor = { .offset = {0, 0}, .extent = VULKAN_SURFACE_EXTENT };
 
     VkPipelineViewportStateCreateInfo viewportInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,

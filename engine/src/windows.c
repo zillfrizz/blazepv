@@ -8,15 +8,15 @@
 #include <camera.h>
 
 //WINDOWS
-struct SDL_Window* WINDOW_HANDLE;
-uint32_t WINDOW_WIDTH = 800;
-uint32_t WINDOW_HEIGHT = 600;
+extern struct SDL_Window* WINDOW_HANDLE;
+extern uint32_t WINDOW_WIDTH = 800;
+extern uint32_t WINDOW_HEIGHT = 600;
 
 //SURFACES
-VkSurfaceKHR WINDOW_VULKAN_SURFACE;
-VkSurfaceFormat2KHR WINDOW_VULKAN_SURFACE_FORMAT;
-VkExtent2D WINDOW_VULKAN_SURFACE_EXTENT;
-VkSurfaceCapabilities2KHR WINDOW_VULKAN_SURFACE_CAPABILITIES;
+extern VkSurfaceKHR VULKAN_SURFACE;
+extern VkSurfaceFormat2KHR VULKAN_SURFACE_FORMAT;
+extern VkExtent2D VULKAN_SURFACE_EXTENT;
+extern VkSurfaceCapabilities2KHR VULKAN_SURFACE_CAPABILITIES;
 
 const char* vkFormatToString(VkFormat format) {
     switch (format) {
@@ -249,13 +249,13 @@ void surface_vulkan_init_format_extent(void){
     };
 
     uint32_t formatCount = 0;
-    vkGetPhysicalDeviceSurfaceFormats2KHR(VULKAN_PHYSICAL_DEVICE_HANDLE, &surfaceInfo, &formatCount, 0);
+    vkGetPhysicalDeviceSurfaceFormats2KHR(VULKAN_PHYSICAL_DEVICE, &surfaceInfo, &formatCount, 0);
     VkSurfaceFormat2KHR* formats = malloc(sizeof(VkSurfaceFormat2KHR) * formatCount); 
     for(int i = 0; i < formatCount; i++){
         formats[i].sType = VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR;
         formats[i].pNext = 0;
     }
-    vkGetPhysicalDeviceSurfaceFormats2KHR(VULKAN_PHYSICAL_DEVICE_HANDLE, &surfaceInfo, &formatCount, formats);
+    vkGetPhysicalDeviceSurfaceFormats2KHR(VULKAN_PHYSICAL_DEVICE, &surfaceInfo, &formatCount, formats);
 
     printf("choose one format by id:\n");
     for(int i = 0; i < formatCount; i++){
@@ -264,29 +264,29 @@ void surface_vulkan_init_format_extent(void){
     uint32_t formatId;
     scanf("%" SCNu32, &formatId);
     printf("\n");
-    WINDOW_VULKAN_SURFACE_FORMAT = formats[formatId];
+    VULKAN_SURFACE_FORMAT = formats[formatId];
         
-    WINDOW_VULKAN_SURFACE_CAPABILITIES.sType = VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR;
-    WINDOW_VULKAN_SURFACE_CAPABILITIES.pNext = 0;
-    vkGetPhysicalDeviceSurfaceCapabilities2KHR(VULKAN_PHYSICAL_DEVICE_HANDLE, &surfaceInfo, &WINDOW_VULKAN_SURFACE_CAPABILITIES);
-    WINDOW_VULKAN_SURFACE_EXTENT = WINDOW_VULKAN_SURFACE_CAPABILITIES.surfaceCapabilities.currentExtent;
+    VULKAN_SURFACE_CAPABILITIES.sType = VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR;
+    VULKAN_SURFACE_CAPABILITIES.pNext = 0;
+    vkGetPhysicalDeviceSurfaceCapabilities2KHR(VULKAN_PHYSICAL_DEVICE, &surfaceInfo, &VULKAN_SURFACE_CAPABILITIES);
+    VULKAN_SURFACE_EXTENT = VULKAN_SURFACE_CAPABILITIES.surfaceCapabilities.currentExtent;
     #define CLAMP(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
-    if(WINDOW_VULKAN_SURFACE_CAPABILITIES.surfaceCapabilities.currentExtent.height != UINT32_MAX){
-        WINDOW_VULKAN_SURFACE_EXTENT.height = 
+    if(VULKAN_SURFACE_CAPABILITIES.surfaceCapabilities.currentExtent.height != UINT32_MAX){
+        VULKAN_SURFACE_EXTENT.height = 
         CLAMP(
-            WINDOW_HEIGHT, WINDOW_VULKAN_SURFACE_CAPABILITIES.surfaceCapabilities.minImageExtent.height, 
-            WINDOW_VULKAN_SURFACE_CAPABILITIES.surfaceCapabilities.maxImageExtent.height
+            WINDOW_HEIGHT, VULKAN_SURFACE_CAPABILITIES.surfaceCapabilities.minImageExtent.height, 
+            VULKAN_SURFACE_CAPABILITIES.surfaceCapabilities.maxImageExtent.height
         );
-        WINDOW_VULKAN_SURFACE_EXTENT.width = 
+        VULKAN_SURFACE_EXTENT.width = 
         CLAMP(
-            WINDOW_HEIGHT, WINDOW_VULKAN_SURFACE_CAPABILITIES.surfaceCapabilities.minImageExtent.width, 
-            WINDOW_VULKAN_SURFACE_CAPABILITIES.surfaceCapabilities.maxImageExtent.width
+            WINDOW_HEIGHT, VULKAN_SURFACE_CAPABILITIES.surfaceCapabilities.minImageExtent.width, 
+            VULKAN_SURFACE_CAPABILITIES.surfaceCapabilities.maxImageExtent.width
         );
     }
 }
 
 void surface_init(void){
-    if(!SDL_Vulkan_CreateSurface(WINDOW_HANDLE, VULKAN_INSTANCE_HANDLE, &WINDOW_VULKAN_SURFACE)){
+    if(!SDL_Vulkan_CreateSurface(WINDOW_HANDLE, VULKAN_INSTANCE, &VULKAN_SURFACE)){
         fprintf(stderr, "Erreur SDL: %s\n", SDL_GetError());
         exit(1);
     }
@@ -300,7 +300,7 @@ void windows_cleanup(void) {
 }
 
 void surface_cleanup(void){
-    vkDestroySurfaceKHR(VULKAN_INSTANCE_HANDLE, WINDOW_VULKAN_SURFACE, 0);
+    vkDestroySurfaceKHR(VULKAN_INSTANCE, VULKAN_SURFACE, 0);
 }
 
 void windows_input_acquire(void* data) {

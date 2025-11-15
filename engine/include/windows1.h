@@ -9,14 +9,14 @@ struct SDL_Window;
 
 //WINDOWS
 extern struct SDL_Window* WINDOW_HANDLE;
-extern uint32_t WINDOW_HEIGHT;
 extern uint32_t WINDOW_WIDTH;
+extern uint32_t WINDOW_HEIGHT;
 
 //SURFACES
-extern VkSurfaceKHR WINDOW_VULKAN_SURFACE;
-extern VkSurfaceFormat2KHR WINDOW_VULKAN_SURFACE_FORMAT;
-extern VkExtent2D WINDOW_VULKAN_SURFACE_EXTENT;
-extern VkSurfaceCapabilities2KHR WINDOW_VULKAN_SURFACE_CAPABILITIES;
+extern VkSurfaceKHR VULKAN_SURFACE;
+extern VkSurfaceFormat2KHR VULKAN_SURFACE_FORMAT;
+extern VkExtent2D VULKAN_SURFACE_EXTENT;
+extern VkSurfaceCapabilities2KHR VULKAN_SURFACE_CAPABILITIES;
 
 void windows_init(void);
 void surface_init(void);
