@@ -8,14 +8,14 @@
 #include <camera.h>
 
 //WINDOWS
-extern struct SDL_Window* WINDOW_HANDLE;
-extern uint32_t WINDOW_WIDTH = 800;
-extern uint32_t WINDOW_HEIGHT = 600;
+struct SDL_Window* WINDOW_HANDLE;
+uint32_t WINDOW_WIDTH = 800;
+uint32_t WINDOW_HEIGHT = 600;
 
 //SURFACES
-extern VkSurfaceKHR VULKAN_SURFACE;
-extern VkSurfaceFormat2KHR VULKAN_SURFACE_FORMAT;
-extern VkExtent2D VULKAN_SURFACE_EXTENT;
+VkSurfaceKHR VULKAN_SURFACE;
+VkSurfaceFormat2KHR VULKAN_SURFACE_FORMAT;
+VkExtent2D VULKAN_SURFACE_EXTENT;
 extern VkSurfaceCapabilities2KHR VULKAN_SURFACE_CAPABILITIES;
 
 const char* vkFormatToString(VkFormat format) {
@@ -244,7 +244,7 @@ void windows_init(void) {
 void surface_vulkan_init_format_extent(void){
     VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR,
-        .surface = WINDOW_VULKAN_SURFACE,
+        .surface = VULKAN_SURFACE,
         .pNext = 0
     };
 

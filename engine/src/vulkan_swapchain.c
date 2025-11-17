@@ -54,8 +54,8 @@ void vulkan_swapchain_framebuffers_init(void){
         framebuffers[i].attachmentCount = 1;
         framebuffers[i].pAttachments = &VULKAN_SWAPCHAIN_IMAGE_VIEWS[i];
         framebuffers[i].layers = 1;
-        framebuffers[i].width = WINDOW_VULKAN_SURFACE_EXTENT.width; 
-        framebuffers[i].height = WINDOW_VULKAN_SURFACE_EXTENT.height;
+        framebuffers[i].width = VULKAN_SURFACE_EXTENT.width; 
+        framebuffers[i].height = VULKAN_SURFACE_EXTENT.height;
         framebuffers[i].flags = 0;
         framebuffers[i].pNext = 0;
         if(vkCreateFramebuffer(VULKAN_DEVICE, &framebuffers[i], 0, &VULKAN_FRAMEBUFFERS[i]) != VK_SUCCESS){
@@ -72,7 +72,7 @@ void vulkan_swapchain_imageviews_init(void){
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             .image = VULKAN_SWAPCHAIN_IMAGES[i],
             .viewType = VK_IMAGE_VIEW_TYPE_2D,
-            .format = WINDOW_VULKAN_SURFACE_FORMAT.surfaceFormat.format,
+            .format = VULKAN_SURFACE_FORMAT.surfaceFormat.format,
             .components.r = VK_COMPONENT_SWIZZLE_IDENTITY,
             .components.g = VK_COMPONENT_SWIZZLE_IDENTITY,
             .components.b = VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -118,17 +118,17 @@ void vulkan_swapchain_init(void){
 
     VkSwapchainCreateInfoKHR createInfo = {
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-        .surface = WINDOW_VULKAN_SURFACE,
-        .imageFormat = WINDOW_VULKAN_SURFACE_FORMAT.surfaceFormat.format,
-        .imageColorSpace = WINDOW_VULKAN_SURFACE_FORMAT.surfaceFormat.colorSpace,
+        .surface = VULKAN_SURFACE,
+        .imageFormat = VULKAN_SURFACE_FORMAT.surfaceFormat.format,
+        .imageColorSpace = VULKAN_SURFACE_FORMAT.surfaceFormat.colorSpace,
         .minImageCount = 2,
-        .imageExtent = WINDOW_VULKAN_SURFACE_EXTENT,
+        .imageExtent = VULKAN_SURFACE_EXTENT,
         .imageArrayLayers = 1,
         .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
         .queueFamilyIndexCount = 0,
         .pQueueFamilyIndices = 0,
-        .preTransform = WINDOW_VULKAN_SURFACE_CAPABILITIES.surfaceCapabilities.currentTransform,
+        .preTransform = VULKAN_SURFACE_CAPABILITIES.surfaceCapabilities.currentTransform,
         .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
         .presentMode = VK_PRESENT_MODE_FIFO_KHR,
         .clipped = VK_TRUE,

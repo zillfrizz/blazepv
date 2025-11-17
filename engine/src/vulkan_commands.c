@@ -94,7 +94,7 @@ void vulkan_commands_begin_renderpass(VkCommandBuffer buffer, VkRenderPass rende
 void vulkan_commands_graphics_record(uint32_t bufferId) {
     VkCommandBuffer cmd = VULKAN_COMMAND_BUFFERS_GRAPHICS[bufferId];
     vulkan_commands_begin_buffer(cmd);
-        vulkan_commands_begin_renderpass(cmd, VULKAN_RENDERPASS, VULKAN_FRAMEBUFFERS[bufferId], WINDOW_VULKAN_SURFACE_EXTENT);
+        vulkan_commands_begin_renderpass(cmd, VULKAN_RENDERPASS, VULKAN_FRAMEBUFFERS[bufferId], VULKAN_SURFACE_EXTENT);
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, VULKAN_PIPELINE);
             vkCmdPushConstants(cmd, VULKAN_PIPELINE_LAYOUT, VK_SHADER_STAGE_VERTEX_BIT, 0, 64, VULKAN_MATRIX_VIEW);
             VkDeviceSize size = sizeof(float) * 6;
