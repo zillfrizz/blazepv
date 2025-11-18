@@ -16,7 +16,7 @@ uint32_t WINDOW_HEIGHT = 600;
 VkSurfaceKHR VULKAN_SURFACE;
 VkSurfaceFormat2KHR VULKAN_SURFACE_FORMAT;
 VkExtent2D VULKAN_SURFACE_EXTENT;
-extern VkSurfaceCapabilities2KHR VULKAN_SURFACE_CAPABILITIES;
+VkSurfaceCapabilities2KHR VULKAN_SURFACE_CAPABILITIES;
 
 const char* vkFormatToString(VkFormat format) {
     switch (format) {

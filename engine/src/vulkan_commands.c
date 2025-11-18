@@ -113,6 +113,34 @@ void vulkan_commands_graphics_records(){
     }
 }
 
+void vulkan_commands_transfer_record(uint32_t bufferId){
+    VkBufferCopy2 copy = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2,
+        .pNext = 0,
+        .size = 64,
+        .dstOffset = 0,
+        .srcOffset = 0
+    };
+
+    VkCopyBufferInfo2 copyInfo = {
+        .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2,
+        .pNext = 0,
+        .regionCount = 1,
+        .pRegions = &copy,
+        .srcBuffer = VULKAN_MATRIX_VIEW_BUFFER_STAGING,
+        .dstBuffer = VULKAN_MATRIX_VIEW_BUFFERS[bufferId]
+    };
+
+    VkCommandBuffer cmd = VULKAN_COMMAND_BUFFERS_TRANSFER[bufferId];
+    vulkan_commands_begin_buffer(cmd);
+        vkCmdCopyBuffer2(cmd, &copyInfo);
+    vkEndCommandBuffer(cmd);
+}
+
+void vulkan_commands_transfer_records(){
+    for(int i = 0; i < VULKAN_SWAPCHAIN_IMAGE_COUNT; i++)
+        vulkan_commands_transfer_record(i);
+}
 /* 
     PUBLIC
 */ 
@@ -129,16 +157,14 @@ void vulkan_commands_init(void) {
     VULKAN_COMMAND_BUFFERS_GRAPHICS_COUNT = VULKAN_SWAPCHAIN_IMAGE_COUNT;
     VULKAN_COMMAND_BUFFERS_GRAPHICS = vulkan_commands_allocate_buffers(VULKAN_DEVICE, VULKAN_COMMAND_POOL_GRAPHICS, VULKAN_COMMAND_BUFFERS_GRAPHICS_COUNT);
 
-    VULKAN_COMMAND_BUFFERS_TRANSFER_COUNT = 1;
+    VULKAN_COMMAND_BUFFERS_TRANSFER_COUNT = VULKAN_SWAPCHAIN_IMAGE_COUNT;
     VULKAN_COMMAND_BUFFERS_TRANSFER = vulkan_commands_allocate_buffers(VULKAN_DEVICE, VULKAN_COMMAND_POOL_TRANSFER, VULKAN_COMMAND_BUFFERS_TRANSFER_COUNT);
 
     if (!VULKAN_COMMAND_BUFFERS_GRAPHICS || !VULKAN_COMMAND_BUFFERS_TRANSFER) {
         printf("Command buffer allocation failed.\n");
     }
 
-    for(int i = 0; i < VULKAN_SWAPCHAIN_IMAGE_COUNT; i++){
-        vulkan_commands_graphics_record(i);
-    }
+    vulkan_commands_graphics_records();
 }
 
 void vulkan_commands_cleanup(void) {
@@ -190,4 +216,29 @@ void vulkan_commands_execute() {
 
     vkQueuePresentKHR(VULKAN_QUEUE_GRAPHICS, &presentInfo);
 
+}
+
+void vulkan_commands_matrix_view_init(uint32_t bufferId, VkFence fence){
+    VkCommandBufferSubmitInfo bufferSubmitInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+        .pNext = 0,
+        .commandBuffer = VULKAN_COMMAND_BUFFERS_TRANSFER[bufferId],
+        .deviceMask = 0x1
+    };
+
+    VkSubmitInfo2 submitInfo = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+        .pNext = 0,
+        .flags = 0,
+        .commandBufferInfoCount = 1,
+        .pCommandBufferInfos = &bufferSubmitInfo,
+        .waitSemaphoreInfoCount = 0,
+        .pWaitSemaphoreInfos = 0,
+        .signalSemaphoreInfoCount = 0,
+        .pSignalSemaphoreInfos = 0,
+    };
+
+    vkQueueSubmit2(VULKAN_QUEUE_TRANSFER, 1, &submitInfo, fence);
+    vkWaitForFences(VULKAN_DEVICE, 1, &fence, VK_TRUE, UINT64_MAX);
+    vkResetFences(VULKAN_DEVICE, 1, &fence);
 }

@@ -9,6 +9,7 @@
 #include <vulkan_pipeline.h>
 #include <vulkan_commands.h>
 #include <vulkan_device.h>
+#include <camera.h>
 
 int main(int argc, char** argv);
 
@@ -24,8 +25,10 @@ void init(void){
     surface_init();
     vulkan_renderpass_init();
     vulkan_swapchain_init();
+    view_matrices_init();
     vulkan_pipeline_init();
     vulkan_commands_init();
+    view_matrices_buffers_fill();
 }
 
 void cleanup(void){

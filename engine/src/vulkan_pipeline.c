@@ -72,7 +72,7 @@ VkShaderModule create_shader_module(const char* cachePath, const char* srcPath) 
     VkShaderModuleCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
         .codeSize = cacheSize,
-        .pCode = buffer,
+        .pCode = (uint32_t*)buffer,
     };
 
     VkShaderModule module;
@@ -92,23 +92,19 @@ VkPipelineCache create_pipeline_cache(const char* path, const char* src) {
     };
 
     VkPipelineCache cache;
-    vkCreatePipelineCache(VULKAN_DEVICE, &cacheInfo, 0, &cache);
+    if(vkCreatePipelineCache(VULKAN_DEVICE, &cacheInfo, 0, &cache) != VK_SUCCESS){
+        printf("can't create pipeline cache\n");
+    }
     free(cacheBuffer);
     return cache;
 }
 
 VkPipelineLayout create_pipeline_layout(void) {
 
-    VkPushConstantRange constantInfo = {
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-        .offset = 0,
-        .size = 64
-    };
-
     VkPipelineLayoutCreateInfo layoutInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .pushConstantRangeCount = 1,
-        .pPushConstantRanges = &constantInfo,
+        .pushConstantRangeCount = 0,
+        .pPushConstantRanges = 0,
         .setLayoutCount = 0,
         .pSetLayouts = 0,
         .flags = 0,
@@ -246,7 +242,9 @@ void create_vertex_buffer(VkBuffer* buffer, VkDeviceMemory* memory) {
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
 
-    vkCreateBuffer(VULKAN_DEVICE, &bufferInfo, 0, buffer);
+    if(vkCreateBuffer(VULKAN_DEVICE, &bufferInfo, 0, buffer) != VK_SUCCESS){
+        printf("can't create vertex buffer\n");
+    }
 
     VkBufferMemoryRequirementsInfo2 memReqInfo = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
@@ -265,17 +263,21 @@ void create_vertex_buffer(VkBuffer* buffer, VkDeviceMemory* memory) {
         .memoryTypeIndex = vulkan_device_get_memory_type(&memReq, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
     };
 
-    vkAllocateMemory(VULKAN_DEVICE, &allocInfo, 0, memory);
+    if(vkAllocateMemory(VULKAN_DEVICE, &allocInfo, 0, memory) != VK_SUCCESS){
+        printf("can't allocate vertex memory\n");
+    }
 
     VkBindBufferMemoryInfo bindInfo = {
         .sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
-        .buffer = VULKAN_BUFFER_VERTEX,
-        .memory = VULKAN_BUFFER_VERTEX_MEMORY,
+        .buffer = *buffer,
+        .memory = *memory,
         .memoryOffset = 0,
         .pNext = 0
     };
 
-    vkBindBufferMemory2(VULKAN_DEVICE, 1, &bindInfo);
+    if(vkBindBufferMemory2(VULKAN_DEVICE, 1, &bindInfo) != VK_SUCCESS){
+        printf("can't bind vertex buffer and memory\n");
+    }
 }
 
 void fill_vertex_buffer(void* data) {
@@ -285,7 +287,7 @@ void fill_vertex_buffer(void* data) {
         .sType = VK_STRUCTURE_TYPE_MEMORY_MAP_INFO,
         .memory = VULKAN_BUFFER_VERTEX_MEMORY,
         .offset = 0,
-        .size = VK_WHOLE_SIZE,
+        .size = sizeof(float) * 6,
         .flags = 0,
         .pNext = 0
     };

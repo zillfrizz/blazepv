@@ -13,8 +13,7 @@ VkPhysicalDeviceProperties2 VULKAN_PHYSICAL_DEVICE_PROPERTIES;
 VkDevice VULKAN_DEVICE;
 
 // QUEUES
-uint32_t VULKAN_FAMILY_GRAPHICS;
-uint32_t VULKAN_FAMILY_TRANSFER;
+uint32_t VULKAN_FAMILIES[VULKAN_FAMILY_COUNT];
 
 VkQueue VULKAN_QUEUE_GRAPHICS;
 VkQueue VULKAN_QUEUE_TRANSFER;
@@ -130,26 +129,28 @@ void vulkan_device_init(){
 
     vkGetPhysicalDeviceQueueFamilyProperties2(devices[deviceId], &queueFamilyCount, queueProps);
 
-    VULKAN_FAMILY_GRAPHICS = 999, VULKAN_FAMILY_TRANSFER = 999; 
+    VULKAN_FAMILIES[VULKAN_FAMILY_GRAPHICS] = 999, VULKAN_FAMILIES[VULKAN_FAMILY_TRANSFER] = 999; 
     float graphicPriorities[] = {1.0f}, transferPriorities[] = {1.0f};
 
     for (uint32_t i = 0; i < queueFamilyCount; i++) {
         VkQueueFlags flags = queueProps[i].queueFamilyProperties.queueFlags;
         uint32_t count = queueProps[i].queueFamilyProperties.queueCount;
-        if ((flags & VK_QUEUE_GRAPHICS_BIT) && VULKAN_FAMILY_GRAPHICS == 999 && count)
-            VULKAN_FAMILY_GRAPHICS = i;
+        if ((flags & VK_QUEUE_GRAPHICS_BIT) && VULKAN_FAMILIES[VULKAN_FAMILY_GRAPHICS] == 999 && count)
+            VULKAN_FAMILIES[VULKAN_FAMILY_GRAPHICS] = i;
 
-        if ((flags & VK_QUEUE_TRANSFER_BIT) && !(flags & VK_QUEUE_GRAPHICS_BIT) && count && VULKAN_FAMILY_TRANSFER == 999)
-            VULKAN_FAMILY_TRANSFER = i;
+        if ((flags & VK_QUEUE_TRANSFER_BIT) && !(flags & VK_QUEUE_GRAPHICS_BIT) && count 
+        && VULKAN_FAMILIES[VULKAN_FAMILY_TRANSFER] == 999)
+            VULKAN_FAMILIES[VULKAN_FAMILY_TRANSFER] = i;
     }
 
-    assert(VULKAN_FAMILY_GRAPHICS != 999 && VULKAN_FAMILY_TRANSFER != 999 && VULKAN_FAMILY_GRAPHICS != VULKAN_FAMILY_TRANSFER);
+    assert(VULKAN_FAMILIES[VULKAN_FAMILY_GRAPHICS] != 999 && VULKAN_FAMILIES[VULKAN_FAMILY_TRANSFER] != 999 
+        && VULKAN_FAMILIES[VULKAN_FAMILY_GRAPHICS] != VULKAN_FAMILIES[VULKAN_FAMILY_TRANSFER]);
 
     VkDeviceQueueCreateInfo queueInfos[] = {
         {
             .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
             .queueCount = 1,
-            .queueFamilyIndex = VULKAN_FAMILY_GRAPHICS,
+            .queueFamilyIndex = VULKAN_FAMILIES[VULKAN_FAMILY_GRAPHICS],
             .pQueuePriorities = graphicPriorities,
             .flags = 0,
             .pNext = 0
@@ -157,7 +158,7 @@ void vulkan_device_init(){
         {
             .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
             .queueCount = 1,
-            .queueFamilyIndex = VULKAN_FAMILY_TRANSFER,
+            .queueFamilyIndex = VULKAN_FAMILIES[VULKAN_FAMILY_TRANSFER],
             .pQueuePriorities = transferPriorities,
             .flags = 0,
             .pNext = 0
@@ -195,8 +196,8 @@ void vulkan_device_init(){
         exit(1);
     }
 
-    vkGetDeviceQueue(VULKAN_DEVICE, VULKAN_FAMILY_GRAPHICS, 0, &VULKAN_QUEUE_GRAPHICS);
-    vkGetDeviceQueue(VULKAN_DEVICE, VULKAN_FAMILY_TRANSFER, 0, &VULKAN_QUEUE_TRANSFER);
+    vkGetDeviceQueue(VULKAN_DEVICE, VULKAN_FAMILIES[VULKAN_FAMILY_GRAPHICS], 0, &VULKAN_QUEUE_GRAPHICS);
+    vkGetDeviceQueue(VULKAN_DEVICE, VULKAN_FAMILIES[VULKAN_FAMILY_TRANSFER], 0, &VULKAN_QUEUE_TRANSFER);
 
 
 }

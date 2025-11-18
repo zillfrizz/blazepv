@@ -17,3 +17,5 @@ void vulkan_commands_init(void);
 void vulkan_commands_cleanup(void);
 void vulkan_commands_execute(void);
 void vulkan_commands_graphics_records(void);
+void vulkan_commands_transfer_records(void);
+void vulkan_commands_matrix_view_init(uint32_t bufferId, VkFence fence);
