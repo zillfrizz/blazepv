@@ -113,9 +113,52 @@ void vulkan_commands_graphics_records(){
     }
 }
 
+void vulkan_commands_transfer_view_matrix_record(uint32_t bufferId){
+     VkBufferCopy copyInfo = {
+        .srcOffset = 0,
+        .dstOffset = 0,
+        .size = 64
+    };
+
+    vulkan_commands_begin_buffer(VULKAN_COMMAND_BUFFERS_TRANSFER[bufferId]);
+        vkCmdCopyBuffer(VULKAN_COMMAND_BUFFERS_TRANSFER[bufferId], VULKAN_MATRIX_VIEW_BUFFER_STAGING, 
+            VULKAN_MATRIX_VIEW_BUFFERS[bufferId], 1, &copyInfo);
+    vkEndCommandBuffer(VULKAN_COMMAND_BUFFERS_TRANSFER[bufferId]);
+}
+
+void vulkan_commands_transfer_records(){
+    for(int i = 0; i < VULKAN_SWAPCHAIN_IMAGE_COUNT; i++)
+        vulkan_commands_transfer_view_matrix_record(i);
+}
+
 /* 
     PUBLIC
-*/ 
+*/
+
+void vulkan_commands_transfer_view_matrix_init(uint32_t bufferId, VkFence fence){
+    VkCommandBufferSubmitInfo cmdSubmitInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+        .pNext = 0,
+        .commandBuffer = VULKAN_COMMAND_BUFFERS_TRANSFER[bufferId],
+        .deviceMask = 0x1
+    };
+
+    VkSubmitInfo2 submitInfo = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+        .pNext = 0,
+        .flags = 0,
+        .commandBufferInfoCount = 1,
+        .pCommandBufferInfos = &cmdSubmitInfo,
+        .waitSemaphoreInfoCount = 0,
+        .pWaitSemaphoreInfos = 0,
+        .signalSemaphoreInfoCount = 0,
+        .pSignalSemaphoreInfos = 0
+    };
+
+    vkQueueSubmit2(VULKAN_QUEUE_TRANSFER, 1, &submitInfo, fence);
+    vkWaitForFences(VULKAN_DEVICE, 1, &fence, VK_TRUE, UINT64_MAX);
+    vkResetFences(VULKAN_DEVICE, 1, &fence);
+}
 
 void vulkan_commands_init(void) {
     VULKAN_COMMAND_POOL_GRAPHICS = vulkan_commands_create_pool(VULKAN_DEVICE, VULKAN_FAMILY_GRAPHICS);
@@ -129,16 +172,15 @@ void vulkan_commands_init(void) {
     VULKAN_COMMAND_BUFFERS_GRAPHICS_COUNT = VULKAN_SWAPCHAIN_IMAGE_COUNT;
     VULKAN_COMMAND_BUFFERS_GRAPHICS = vulkan_commands_allocate_buffers(VULKAN_DEVICE, VULKAN_COMMAND_POOL_GRAPHICS, VULKAN_COMMAND_BUFFERS_GRAPHICS_COUNT);
 
-    VULKAN_COMMAND_BUFFERS_TRANSFER_COUNT = 1;
+    VULKAN_COMMAND_BUFFERS_TRANSFER_COUNT = VULKAN_SWAPCHAIN_IMAGE_COUNT;
     VULKAN_COMMAND_BUFFERS_TRANSFER = vulkan_commands_allocate_buffers(VULKAN_DEVICE, VULKAN_COMMAND_POOL_TRANSFER, VULKAN_COMMAND_BUFFERS_TRANSFER_COUNT);
 
     if (!VULKAN_COMMAND_BUFFERS_GRAPHICS || !VULKAN_COMMAND_BUFFERS_TRANSFER) {
         printf("Command buffer allocation failed.\n");
     }
 
-    for(int i = 0; i < VULKAN_SWAPCHAIN_IMAGE_COUNT; i++){
-        vulkan_commands_graphics_record(i);
-    }
+    vulkan_commands_graphics_records();
+    vulkan_commands_transfer_records();
 }
 
 void vulkan_commands_cleanup(void) {

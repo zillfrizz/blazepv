@@ -16,4 +16,4 @@ extern VkCommandBuffer* VULKAN_COMMAND_BUFFERS_TRANSFER;
 void vulkan_commands_init(void);
 void vulkan_commands_cleanup(void);
 void vulkan_commands_execute(void);
-void vulkan_commands_graphics_records(void);
+void vulkan_commands_transfer_view_matrix_init(uint32_t bufferId, VkFence fence);

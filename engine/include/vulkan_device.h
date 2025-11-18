@@ -3,14 +3,19 @@
 #include <vulkan/vulkan.h>
 #include <volk.h>
 
+enum VULKAN_FAMILY {
+    VULKAN_FAMILY_GRAPHICS,
+    VULKAN_FAMILY_TRANSFER,
+    VULKAN_FAMILY_COUNT
+};
+
 // DEVICE
 extern VkPhysicalDevice VULKAN_PHYSICAL_DEVICE;
 extern VkPhysicalDeviceProperties2 VULKAN_PHYSICAL_DEVICE_PROPERTIES;
 extern VkDevice VULKAN_DEVICE;
 
 // QUEUES
-extern uint32_t VULKAN_FAMILY_GRAPHICS;
-extern uint32_t VULKAN_FAMILY_TRANSFER;
+extern uint32_t VULKAN_FAMILIES[VULKAN_FAMILY_COUNT];
 
 extern VkQueue VULKAN_QUEUE_GRAPHICS;
 extern VkQueue VULKAN_QUEUE_TRANSFER;

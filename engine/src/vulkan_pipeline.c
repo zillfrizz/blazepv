@@ -9,12 +9,12 @@
 #include <vulkan_renderpass.h>
 #include <windows1.h>
 
-#define PIPELINE_SRC_PATH "C:\\Dev\\blazepv\\engine\\src\\vulkan_pipeline.c"
-#define PIPELINE_PATH "C:\\Dev\\blazepv\\engine\\cache\\pipeline.bin"
-#define SHADER_VERTEX_SRC_PATH "C:\\Dev\\blazepv\\engine\\assets\\shaders\\shader.vert"
-#define SHADER_VERTEX_PATH "C:\\Dev\\blazepv\\engine\\cache\\shader.vert.spv"
-#define SHADER_FRAGMENT_SRC_PATH "C:\\Dev\\blazepv\\engine\\assets\\shaders\\shader.frag"
-#define SHADER_FRAGMENT_PATH "C:\\Dev\\blazepv\\engine\\cache\\shader.frag.spv"
+#define PIPELINE_SRC_PATH "D:\\Dev\\blazepv\\engine\\src\\vulkan_pipeline.c"
+#define PIPELINE_PATH "D:\\Dev\\blazepv\\engine\\cache\\pipeline.bin"
+#define SHADER_VERTEX_SRC_PATH "D:\\Dev\\blazepv\\engine\\assets\\shaders\\shader.vert"
+#define SHADER_VERTEX_PATH "D:\\Dev\\blazepv\\engine\\cache\\shader.vert.spv"
+#define SHADER_FRAGMENT_SRC_PATH "D:\\Dev\\blazepv\\engine\\assets\\shaders\\shader.frag"
+#define SHADER_FRAGMENT_PATH "D:\\Dev\\blazepv\\engine\\cache\\shader.frag.spv"
 
 // PIPELINE
 VkPipeline VULKAN_PIPELINE;
