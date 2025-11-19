@@ -113,6 +113,41 @@ void vulkan_commands_graphics_records(){
     }
 }
 
+void vulkan_commands_graphics_execute(){
+     VkCommandBufferSubmitInfo bufferSubmitInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+        .commandBuffer = VULKAN_COMMAND_BUFFERS_GRAPHICS[VULKAN_SWAPCHAIN_IMAGE_INDEX],
+        .deviceMask = 0x1,
+        .pNext = 0
+    };
+
+    VkSubmitInfo2 submitInfo = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+        .commandBufferInfoCount = 1,
+        .pCommandBufferInfos = &bufferSubmitInfo,
+        .signalSemaphoreInfoCount = 0,
+        .pSignalSemaphoreInfos = 0,
+        .waitSemaphoreInfoCount = 0,
+        .pWaitSemaphoreInfos = 0,
+        .flags = 0,
+        .pNext = 0
+    };
+
+    vkQueueSubmit2(VULKAN_QUEUE_GRAPHICS, 1, &submitInfo, VULKAN_SWAPCHAIN_DB_FENCES[0]);
+
+        VkPresentInfoKHR presentInfo = {
+        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .waitSemaphoreCount = 0,
+        .pWaitSemaphores = NULL,
+        .swapchainCount = 1,
+        .pSwapchains = &VULKAN_SWAPCHAIN,
+        .pImageIndices = &VULKAN_SWAPCHAIN_IMAGE_INDEX,
+        .pResults = NULL
+    };
+
+    vkQueuePresentKHR(VULKAN_QUEUE_GRAPHICS, &presentInfo);
+}
+
 void vulkan_commands_transfer_view_matrix_record(uint32_t bufferId){
      VkBufferCopy copyInfo = {
         .srcOffset = 0,
@@ -131,9 +166,38 @@ void vulkan_commands_transfer_records(){
         vulkan_commands_transfer_view_matrix_record(i);
 }
 
+void vulkan_commands_transfer_init(){
+    vulkan_commands_transfer_records();
+}
+
+void vulkan_commands_transfer_view_matrix_execute(uint32_t bufferId){
+    VkCommandBufferSubmitInfo cmdSubmitInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+        .pNext = 0,
+        .commandBuffer = VULKAN_COMMAND_BUFFERS_TRANSFER[bufferId],
+        .deviceMask = 0x1
+    };
+
+    VkSubmitInfo2 submitInfo = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+        .pNext = 0,
+        .flags = 0,
+        .commandBufferInfoCount = 1,
+        .pCommandBufferInfos = &cmdSubmitInfo,
+        .waitSemaphoreInfoCount = 0,
+        .pWaitSemaphoreInfos = 0,
+        .signalSemaphoreInfoCount = 0,
+        .pSignalSemaphoreInfos = 0
+    };
+
+    vkQueueSubmit2(VULKAN_QUEUE_TRANSFER, 1, &submitInfo, VULKAN_SWAPCHAIN_DB_FENCES[2]);
+}
+
 /* 
     PUBLIC
 */
+
+
 
 void vulkan_commands_transfer_view_matrix_init(uint32_t bufferId, VkFence fence){
     VkCommandBufferSubmitInfo cmdSubmitInfo = {
@@ -180,7 +244,7 @@ void vulkan_commands_init(void) {
     }
 
     vulkan_commands_graphics_records();
-    vulkan_commands_transfer_records();
+    vulkan_commands_transfer_init();
 }
 
 void vulkan_commands_cleanup(void) {
@@ -199,37 +263,11 @@ void vulkan_commands_execute() {
     vkWaitForFences(VULKAN_DEVICE, 2, VULKAN_SWAPCHAIN_DB_FENCES, VK_TRUE, UINT64_MAX);
     vkResetFences(VULKAN_DEVICE, 2, VULKAN_SWAPCHAIN_DB_FENCES);
 
-    VkCommandBufferSubmitInfo bufferSubmitInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
-        .commandBuffer = VULKAN_COMMAND_BUFFERS_GRAPHICS[VULKAN_SWAPCHAIN_IMAGE_INDEX],
-        .deviceMask = 0x1,
-        .pNext = 0
-    };
+    //GRAPHICS
 
-    VkSubmitInfo2 submitInfo = {
-        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
-        .commandBufferInfoCount = 1,
-        .pCommandBufferInfos = &bufferSubmitInfo,
-        .signalSemaphoreInfoCount = 0,
-        .pSignalSemaphoreInfos = 0,
-        .waitSemaphoreInfoCount = 0,
-        .pWaitSemaphoreInfos = 0,
-        .flags = 0,
-        .pNext = 0
-    };
+   vulkan_commands_graphics_execute();
 
-    VkPresentInfoKHR presentInfo = {
-        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-        .waitSemaphoreCount = 0,
-        .pWaitSemaphores = NULL,
-        .swapchainCount = 1,
-        .pSwapchains = &VULKAN_SWAPCHAIN,
-        .pImageIndices = &VULKAN_SWAPCHAIN_IMAGE_INDEX,
-        .pResults = NULL
-    };
+    // TRANSFER
 
-    vkQueueSubmit2(VULKAN_QUEUE_GRAPHICS, 1, &submitInfo, VULKAN_SWAPCHAIN_DB_FENCES[0]);
-
-    vkQueuePresentKHR(VULKAN_QUEUE_GRAPHICS, &presentInfo);
-
+    vulkan_commands_transfer_view_matrix_execute((VULKAN_SWAPCHAIN_IMAGE_INDEX + 1) % VULKAN_SWAPCHAIN_IMAGE_COUNT);
 }

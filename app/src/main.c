@@ -10,6 +10,7 @@
 #include <vulkan_commands.h>
 #include <vulkan_device.h>
 #include <camera.h>
+#include <time.h>
 
 int main(int argc, char** argv);
 
@@ -43,6 +44,8 @@ void cleanup(void){
 }
 
 int main(int argc, char** argv){
+    uint64_t frames;
+    
     init();
     uint32_t quit = 0;
     HANDLE thread;

@@ -91,7 +91,7 @@ void vulkan_swapchain_imageviews_init(void){
 }
 
 void vulkan_swapchain_fence_init(void){
-    VULKAN_SWAPCHAIN_DB_FENCES = malloc(sizeof(VkFence) * 2);
+    VULKAN_SWAPCHAIN_DB_FENCES = malloc(sizeof(VkFence) * 3);
 
     VkFenceCreateInfo fenceInfo = {
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -106,11 +106,15 @@ void vulkan_swapchain_fence_init(void){
     };
 
     if(vkCreateFence(VULKAN_DEVICE, &fenceInfo, 0, &VULKAN_SWAPCHAIN_DB_FENCES[0]) != VK_SUCCESS){
-        printf("can't create swapchain fence.\n");
+        printf("can't create swapchain fence 1.\n");
     }
 
     if(vkCreateFence(VULKAN_DEVICE, &fenceInfo2, 0, &VULKAN_SWAPCHAIN_DB_FENCES[1]) != VK_SUCCESS){
-        printf("can't create swapchain fence.\n");
+        printf("can't create swapchain fence 2.\n");
+    }
+
+    if(vkCreateFence(VULKAN_DEVICE, &fenceInfo, 0, &VULKAN_SWAPCHAIN_DB_FENCES[2]) != VK_SUCCESS){
+        printf("can't create swapchain fence 3.\n");
     }
 }
 
@@ -131,6 +135,7 @@ void vulkan_swapchain_init(void){
         .preTransform = VULKAN_SURFACE_CAPABILITIES.surfaceCapabilities.currentTransform,
         .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
         .presentMode = VK_PRESENT_MODE_FIFO_KHR,
+        //.presentMode = VK_PRESENT_MODE_IMMEDIATE_KHR,
         .clipped = VK_TRUE,
         .oldSwapchain = 0,
         .pNext = 0
