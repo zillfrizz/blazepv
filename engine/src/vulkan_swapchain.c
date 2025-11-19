@@ -134,8 +134,8 @@ void vulkan_swapchain_init(void){
         .pQueueFamilyIndices = 0,
         .preTransform = VULKAN_SURFACE_CAPABILITIES.surfaceCapabilities.currentTransform,
         .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-        .presentMode = VK_PRESENT_MODE_FIFO_KHR,
-        //.presentMode = VK_PRESENT_MODE_IMMEDIATE_KHR,
+        //.presentMode = VK_PRESENT_MODE_FIFO_KHR,
+        .presentMode = VK_PRESENT_MODE_IMMEDIATE_KHR,
         .clipped = VK_TRUE,
         .oldSwapchain = 0,
         .pNext = 0

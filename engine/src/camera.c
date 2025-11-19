@@ -168,9 +168,10 @@ void view_matrices_buffers_fill(){
 
     for(int i = 0; i < VULKAN_SWAPCHAIN_IMAGE_COUNT; i++){
         void* map;
-        vkMapMemory2(VULKAN_DEVICE, &mapInfo, &map);
+        vkMapMemory(VULKAN_DEVICE, VULKAN_MATRIX_VIEW_BUFFER_STAGING_MEMORY,
+        0, 64, 0, &map);
         memcpy(map, VULKAN_MATRIX_VIEW, 64);
-        vkUnmapMemory2(VULKAN_DEVICE, &unmapInfo);
+        vkUnmapMemory(VULKAN_DEVICE, VULKAN_MATRIX_VIEW_BUFFER_STAGING_MEMORY);
         vulkan_commands_transfer_view_matrix_init(i, tmpFence);
     }
 }

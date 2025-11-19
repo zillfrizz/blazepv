@@ -9,12 +9,12 @@
 #include <vulkan_renderpass.h>
 #include <windows1.h>
 
-#define PIPELINE_SRC_PATH "D:\\Dev\\blazepv\\engine\\src\\vulkan_pipeline.c"
-#define PIPELINE_PATH "D:\\Dev\\blazepv\\engine\\cache\\pipeline.bin"
-#define SHADER_VERTEX_SRC_PATH "D:\\Dev\\blazepv\\engine\\assets\\shaders\\shader.vert"
-#define SHADER_VERTEX_PATH "D:\\Dev\\blazepv\\engine\\cache\\shader.vert.spv"
-#define SHADER_FRAGMENT_SRC_PATH "D:\\Dev\\blazepv\\engine\\assets\\shaders\\shader.frag"
-#define SHADER_FRAGMENT_PATH "D:\\Dev\\blazepv\\engine\\cache\\shader.frag.spv"
+#define PIPELINE_SRC_PATH "C:\\Dev\\blazepv\\engine\\src\\vulkan_pipeline.c"
+#define PIPELINE_PATH "C:\\Dev\\blazepv\\engine\\cache\\pipeline.bin"
+#define SHADER_VERTEX_SRC_PATH "C:\\Dev\\blazepv\\engine\\assets\\shaders\\shader.vert"
+#define SHADER_VERTEX_PATH "C:\\Dev\\blazepv\\engine\\cache\\shader.vert.spv"
+#define SHADER_FRAGMENT_SRC_PATH "C:\\Dev\\blazepv\\engine\\assets\\shaders\\shader.frag"
+#define SHADER_FRAGMENT_PATH "C:\\Dev\\blazepv\\engine\\cache\\shader.frag.spv"
 
 // PIPELINE
 VkPipeline VULKAN_PIPELINE;
@@ -62,7 +62,7 @@ VkShaderModule create_shader_module(const char* cachePath, const char* srcPath) 
     uint32_t cacheSize;
     void* buffer = file_check(cachePath, srcPath, &cacheSize);
     if (!buffer) {
-        printf("command: glslangValidator -V %s -o %s\n", srcPath, cachePath);
+        printf("commanD: glslangValidator -V %s -o %s\n", srcPath, cachePath);
         char cmd[512];
         sprintf(cmd, "glslangValidator -V %s -o %s", srcPath, cachePath);
         system(cmd);
@@ -297,9 +297,9 @@ void fill_vertex_buffer(void* data) {
         .pNext = 0
     };
 
-    vkMapMemory2(VULKAN_DEVICE, &mapInfo, &map);
+    vkMapMemory(VULKAN_DEVICE, VULKAN_BUFFER_VERTEX_MEMORY, 0, sizeof(float) * 6, 0, &map);
     memcpy(map, data, sizeof(float) * 6);
-    vkUnmapMemory2(VULKAN_DEVICE, &unmapInfo);
+    vkUnmapMemory(VULKAN_DEVICE, VULKAN_BUFFER_VERTEX_MEMORY);
 }
 
 /*
