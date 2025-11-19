@@ -242,6 +242,7 @@ void windows_init(void) {
 }
 
 void surface_vulkan_init_format_extent(void){
+
     VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR,
         .surface = VULKAN_SURFACE,
@@ -259,7 +260,17 @@ void surface_vulkan_init_format_extent(void){
 
     printf("choose one format by id:\n");
     for(int i = 0; i < formatCount; i++){
-        printf("\t%d, %s, %s\n", i, vkColorSpaceToString(formats[i].surfaceFormat.colorSpace), vkFormatToString(formats[i].surfaceFormat.format));
+        VkImageFormatProperties props;
+        if(!vkGetPhysicalDeviceImageFormatProperties(
+            VULKAN_PHYSICAL_DEVICE,
+            formats[i].surfaceFormat.format,
+            VK_IMAGE_TYPE_2D,
+            VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+            0,
+            &props
+        ))
+            printf("\t%d, %s, %s\n", i, vkColorSpaceToString(formats[i].surfaceFormat.colorSpace), vkFormatToString(formats[i].surfaceFormat.format));
     }
     uint32_t formatId;
     scanf("%" SCNu32, &formatId);
