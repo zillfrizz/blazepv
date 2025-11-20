@@ -8,6 +8,9 @@
 // PIPELINE
 extern VkPipeline VULKAN_PIPELINE;
 extern VkPipelineLayout VULKAN_PIPELINE_LAYOUT;
+extern VkDescriptorPool VULKAN_PIPELINE_DESCRIPTOR_POOL;
+extern VkDescriptorSetLayout VULKAN_PIPELINE_DESCRIPTOR_SET_LAYOUT;
+extern VkDescriptorSet* VULKAN_PIPELINE_DESCRIPTOR_SETS;
 extern VkPipelineCache VULKAN_PIPELINE_CACHE;
 
 // SHADERS
@@ -17,6 +20,11 @@ extern VkShaderModule VULKAN_SHADER_FRAGMENT;
 // BUFFERS
 extern VkBuffer VULKAN_BUFFER_VERTEX;
 extern VkDeviceMemory VULKAN_BUFFER_VERTEX_MEMORY;
+
+typedef struct VertexData{
+    float coords[3];
+    uint32_t faceId;
+} VertexData;
 
 
 void vulkan_pipeline_init(void);

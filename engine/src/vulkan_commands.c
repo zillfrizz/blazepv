@@ -97,10 +97,10 @@ void vulkan_commands_graphics_record(uint32_t bufferId) {
         vulkan_commands_begin_renderpass(cmd, VULKAN_RENDERPASS, VULKAN_FRAMEBUFFERS[bufferId], VULKAN_SURFACE_EXTENT);
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, VULKAN_PIPELINE);
             vkCmdPushConstants(cmd, VULKAN_PIPELINE_LAYOUT, VK_SHADER_STAGE_VERTEX_BIT, 0, 64, VULKAN_MATRIX_VIEW);
-            VkDeviceSize size = sizeof(float) * 6;
+            VkDeviceSize size = sizeof(VertexData) * 36;
             VkDeviceSize offset = 0;
             vkCmdBindVertexBuffers2(cmd, 0, 1, &VULKAN_BUFFER_VERTEX, &offset, &size, 0);
-            vkCmdDraw(cmd, 3, 1, 0, 0);
+            vkCmdDraw(cmd, 36, 1, 0, 0);
      vkCmdEndRenderPass(cmd);
     if (vkEndCommandBuffer(cmd) != VK_SUCCESS) {
         printf("Failed to end command buffer.\n");

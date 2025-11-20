@@ -8,6 +8,7 @@
 #include <vulkan_swapchain.h>
 #include <vulkan_renderpass.h>
 #include <windows1.h>
+#include <camera.h>
 
 #define PIPELINE_SRC_PATH "C:\\Dev\\blazepv\\engine\\src\\vulkan_pipeline.c"
 #define PIPELINE_PATH "C:\\Dev\\blazepv\\engine\\cache\\pipeline.bin"
@@ -19,6 +20,9 @@
 // PIPELINE
 VkPipeline VULKAN_PIPELINE;
 VkPipelineLayout VULKAN_PIPELINE_LAYOUT;
+VkDescriptorPool VULKAN_PIPELINE_DESCRIPTOR_POOL;
+VkDescriptorSetLayout VULKAN_PIPELINE_DESCRIPTOR_SET_LAYOUT;
+VkDescriptorSet* VULKAN_PIPELINE_DESCRIPTOR_SETS;
 VkPipelineCache VULKAN_PIPELINE_CACHE;
 
 // SHADERS
@@ -97,20 +101,95 @@ VkPipelineCache create_pipeline_cache(const char* path, const char* src) {
     return cache;
 }
 
+VkDescriptorPool create_pipeline_descriptor_pool(void){
+     VkDescriptorPoolSize descPoolSize = {
+        .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 3
+    };
+
+    VkDescriptorPoolCreateInfo descPoolInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .flags = 0,
+        .pNext = 0,
+        .maxSets = VULKAN_SWAPCHAIN_IMAGE_COUNT,
+        .poolSizeCount = 1,
+        .pPoolSizes = &descPoolSize  
+    };
+
+    VkDescriptorPool pool;
+    vkCreateDescriptorPool(VULKAN_DEVICE, &descPoolInfo, 0, &pool);
+    return pool;
+}
+
+VkDescriptorSetLayout create_pipeline_descriptor_set_layout(void){
+    VkDescriptorSetLayoutBinding descSetLayoutBind = {
+        .binding = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+        .pImmutableSamplers = 0
+    };
+
+    VkDescriptorSetLayoutCreateInfo descLayoutInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .flags = 0,
+        .pNext = 0,
+        .bindingCount = 1,
+        .pBindings = &descSetLayoutBind
+    };
+
+    VkDescriptorSetLayout layout;
+    vkCreateDescriptorSetLayout(VULKAN_DEVICE, &descLayoutInfo, 0, &layout);
+    return layout;
+}
+
+VkDescriptorSet* create_pipeline_descriptor_sets(VkDescriptorPool descPool,
+     uint32_t setCount, VkDescriptorSetLayout* layouts){
+    VkDescriptorSetAllocateInfo descSetAllocInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .pNext = 0,
+        .descriptorPool = descPool,
+        .descriptorSetCount = setCount,
+        .pSetLayouts = &layouts,
+    };
+
+    VkDescriptorSet* sets = malloc(sizeof(VkDescriptorSet) * setCount);
+    vkAllocateDescriptorSets(VULKAN_DEVICE, &descSetAllocInfo, sets);
+    return sets;
+}
+
+void pipeline_init_descriptors(void){
+    for(int i = 0; i < VULKAN_SWAPCHAIN_IMAGE_COUNT; i++){
+        VkDescriptorBufferInfo bufferInfo = {
+        .buffer = VULKAN_MATRIX_VIEW_BUFFERS[i],
+        .offset = 0,
+        .range = sizeof(UniformBufferObject)
+    };
+
+    VkWriteDescriptorSet descriptorWrite = {
+        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .dstSet = descriptorSet,
+        .dstBinding = 0,
+        .dstArrayElement = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .pBufferInfo = &bufferInfo
+    };
+
+    vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, NULL);
+    }
+}
+
 VkPipelineLayout create_pipeline_layout(void) {
 
-    VkPushConstantRange constantInfo = {
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-        .offset = 0,
-        .size = 64
-    };
+
 
     VkPipelineLayoutCreateInfo layoutInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .pushConstantRangeCount = 1,
-        .pPushConstantRanges = &constantInfo,
-        .setLayoutCount = 0,
-        .pSetLayouts = 0,
+        .pushConstantRangeCount = 0,
+        .pPushConstantRanges = 0,
+        .setLayoutCount = 1,
+        .pSetLayouts = &VULKAN_PIPELINE_DESCRIPTOR_SET_LAYOUT,
         .flags = 0,
         .pNext = 0
     };
@@ -145,19 +224,20 @@ VkPipeline create_graphics_pipeline(VkShaderModule vert, VkShaderModule frag, Vk
     */
 
     VkVertexInputBindingDescription bindDesc = {
-        .binding = 0, .stride = sizeof(float) * 2, .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
+        .binding = 0, .stride = sizeof(VertexData), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
     };
 
-    VkVertexInputAttributeDescription attrDesc = {
-        .binding = 0, .location = 0, .format = VK_FORMAT_R32G32_SFLOAT, .offset = 0
+    VkVertexInputAttributeDescription attrDesc[] = {
+        {.binding = 0, .location = 0, .format = VK_FORMAT_R32G32_SFLOAT, .offset = 0 },
+        {.binding = 0, .location = 1, .format = VK_FORMAT_R32_UINT, .offset = sizeof(float) * 3}
     };
 
     VkPipelineVertexInputStateCreateInfo vertInputInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .vertexBindingDescriptionCount = 1,
         .pVertexBindingDescriptions = &bindDesc,
-        .vertexAttributeDescriptionCount = 1,
-        .pVertexAttributeDescriptions = &attrDesc
+        .vertexAttributeDescriptionCount = 2,
+        .pVertexAttributeDescriptions = attrDesc
     };
 
     VkPipelineInputAssemblyStateCreateInfo assemblyInfo = {
@@ -190,8 +270,10 @@ VkPipeline create_graphics_pipeline(VkShaderModule vert, VkShaderModule frag, Vk
 
     VkPipelineRasterizationStateCreateInfo rasterInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-        .polygonMode = VK_POLYGON_MODE_FILL,
-        .cullMode = VK_CULL_MODE_BACK_BIT,
+        //.polygonMode = VK_POLYGON_MODE_FILL,
+        .polygonMode = VK_POLYGON_MODE_LINE,
+        //.cullMode = VK_CULL_MODE_BACK_BIT,
+        .cullMode = VK_CULL_MODE_NONE,
         .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
         .lineWidth = 1.0f
     };
@@ -241,7 +323,7 @@ VkPipeline create_graphics_pipeline(VkShaderModule vert, VkShaderModule frag, Vk
 void create_vertex_buffer(VkBuffer* buffer, VkDeviceMemory* memory) {
     VkBufferCreateInfo bufferInfo = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .size = sizeof(float) * 6,
+        .size = sizeof(VertexData) * 36,
         .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
@@ -297,8 +379,8 @@ void fill_vertex_buffer(void* data) {
         .pNext = 0
     };
 
-    vkMapMemory(VULKAN_DEVICE, VULKAN_BUFFER_VERTEX_MEMORY, 0, sizeof(float) * 6, 0, &map);
-    memcpy(map, data, sizeof(float) * 6);
+    vkMapMemory(VULKAN_DEVICE, VULKAN_BUFFER_VERTEX_MEMORY, 0, sizeof(VertexData) * 36, 0, &map);
+    memcpy(map, data, sizeof(VertexData) * 36);
     vkUnmapMemory(VULKAN_DEVICE, VULKAN_BUFFER_VERTEX_MEMORY);
 }
 
@@ -314,14 +396,73 @@ void vulkan_pipeline_init(void) {
     VULKAN_SHADER_VERTEX = create_shader_module(SHADER_VERTEX_PATH, SHADER_VERTEX_SRC_PATH);
     VULKAN_SHADER_FRAGMENT = create_shader_module(SHADER_FRAGMENT_PATH, SHADER_FRAGMENT_SRC_PATH);
     VULKAN_PIPELINE_CACHE = create_pipeline_cache(PIPELINE_PATH, PIPELINE_SRC_PATH);
+    VULKAN_PIPELINE_DESCRIPTOR_POOL = create_pipeline_descriptor_pool();
+    VULKAN_PIPELINE_DESCRIPTOR_SET_LAYOUT = create_pipeline_descriptor_set_layout();
+    VkDescriptorSetLayout* layouts = malloc(sizeof(VkDescriptorSetLayout) * VULKAN_SWAPCHAIN_IMAGE_COUNT);
+    for(int i = 0; i < VULKAN_SWAPCHAIN_IMAGE_COUNT; i++)
+        layouts[i] = VULKAN_PIPELINE_DESCRIPTOR_SET_LAYOUT;
+    VULKAN_PIPELINE_DESCRIPTOR_SETS = create_pipeline_descriptor_sets(VULKAN_PIPELINE_DESCRIPTOR_POOL,
+        VULKAN_SWAPCHAIN_IMAGE_COUNT, layouts);
+    free(layouts);
     VULKAN_PIPELINE_LAYOUT = create_pipeline_layout();
     VULKAN_PIPELINE = create_graphics_pipeline(VULKAN_SHADER_VERTEX, VULKAN_SHADER_FRAGMENT, VULKAN_PIPELINE_LAYOUT, VULKAN_PIPELINE_CACHE);
     create_vertex_buffer(&VULKAN_BUFFER_VERTEX, &VULKAN_BUFFER_VERTEX_MEMORY);
-    float data[] = {
-        0.0f, -1.0f,
-        -1.0f, 1.0f,
-        1.0f, 1.0f
+    VertexData data[] = {
+        // Face avant (Z = +0.5)
+        {{-0.5f, -0.5f,  0.5f}, 0},
+        {{ 0.5f, -0.5f,  0.5f}, 0},
+        {{ 0.5f,  0.5f,  0.5f}, 0},
+
+        {{-0.5f, -0.5f,  0.5f}, 0},
+        {{ 0.5f,  0.5f,  0.5f}, 0},
+        {{-0.5f,  0.5f,  0.5f}, 0},
+
+        // Face arrière (Z = -0.5)
+        {{-0.5f, -0.5f, -0.5f}, 1},
+        {{ 0.5f,  0.5f, -0.5f}, 1},
+        {{ 0.5f, -0.5f, -0.5f}, 1},
+
+        {{-0.5f, -0.5f, -0.5f}, 1},
+        {{-0.5f,  0.5f, -0.5f}, 1},
+        {{ 0.5f,  0.5f, -0.5f}, 1},
+
+        // Face gauche (X = -0.5)
+        {{-0.5f, -0.5f, -0.5f}, 2},
+        {{-0.5f, -0.5f,  0.5f}, 2},
+        {{-0.5f,  0.5f,  0.5f}, 2},
+
+        {{-0.5f, -0.5f, -0.5f}, 2},
+        {{-0.5f,  0.5f,  0.5f}, 2},
+        {{-0.5f,  0.5f, -0.5f}, 2},
+
+        // Face droite (X = +0.5)
+        {{ 0.5f, -0.5f, -0.5f}, 3},
+        {{ 0.5f,  0.5f,  0.5f}, 3},
+        {{ 0.5f, -0.5f,  0.5f}, 3},
+
+        {{ 0.5f, -0.5f, -0.5f}, 3},
+        {{ 0.5f,  0.5f, -0.5f}, 3},
+        {{ 0.5f,  0.5f,  0.5f}, 3},
+
+        // Face haut (Y = +0.5)
+        {{-0.5f,  0.5f, -0.5f}, 4},
+        {{-0.5f,  0.5f,  0.5f}, 4},
+        {{ 0.5f,  0.5f,  0.5f}, 4},
+
+        {{-0.5f,  0.5f, -0.5f}, 4},
+        {{ 0.5f,  0.5f,  0.5f}, 4},
+        {{ 0.5f,  0.5f, -0.5f}, 4},
+
+        // Face bas (Y = -0.5)
+        {{-0.5f, -0.5f, -0.5f}, 5},
+        {{ 0.5f, -0.5f,  0.5f}, 5},
+        {{-0.5f, -0.5f,  0.5f}, 5},
+
+        {{-0.5f, -0.5f, -0.5f}, 5},
+        {{ 0.5f, -0.5f, -0.5f}, 5},
+        {{ 0.5f, -0.5f,  0.5f}, 5}
     };
+
     fill_vertex_buffer(data);
 }
 
