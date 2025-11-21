@@ -1,4 +1,4 @@
-#include "tab.h"
+#include <bz_tab.h>
 #include <stdlib.h>
 #include <stddef.h>
 #include <assert.h>

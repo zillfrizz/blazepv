@@ -1,21 +1,13 @@
 #include <vulkan_pipeline.h>
 #include <windows.h>
 #include <stdlib.h>
-#include <io.h>
 #include <stdio.h>
-#include <sys/stat.h>
 #include <vulkan_device.h>
 #include <vulkan_swapchain.h>
 #include <vulkan_renderpass.h>
 #include <windows1.h>
 #include <camera.h>
-
-#define PIPELINE_SRC_PATH "C:\\Dev\\blazepv\\engine\\src\\vulkan_pipeline.c"
-#define PIPELINE_PATH "C:\\Dev\\blazepv\\engine\\cache\\pipeline.bin"
-#define SHADER_VERTEX_SRC_PATH "C:\\Dev\\blazepv\\engine\\assets\\shaders\\shader.vert"
-#define SHADER_VERTEX_PATH "C:\\Dev\\blazepv\\engine\\cache\\shader.vert.spv"
-#define SHADER_FRAGMENT_SRC_PATH "C:\\Dev\\blazepv\\engine\\assets\\shaders\\shader.frag"
-#define SHADER_FRAGMENT_PATH "C:\\Dev\\blazepv\\engine\\cache\\shader.frag.spv"
+#include <file.h>
 
 // PIPELINE
 VkPipeline VULKAN_PIPELINE;
@@ -34,37 +26,9 @@ VkBuffer VULKAN_BUFFER_VERTEX;
 VkDeviceMemory VULKAN_BUFFER_VERTEX_MEMORY;
 
 
-/* 
-   UTILS
-*/
-void file_push(const char* filePath, void* data, uint32_t size) {
-    FILE* f = fopen(filePath, "wb");
-    fwrite(data, 1, size, f);
-    fclose(f);
-    free(data);
-}
-
-void* file_fetch(const char* filePath, uint32_t* aSize) {
-    FILE* f = fopen(filePath, "rb");
-    fseek(f, 0, SEEK_END);
-    *aSize = ftell(f);
-    rewind(f);
-    void* buffer = malloc(*aSize);
-    *aSize = fread(buffer, 1, *aSize, f);
-    fclose(f);
-    return buffer;
-}
-
-void* file_check(const char* filePath, const char* srcPath, uint32_t* aSize) {
-    struct stat fileStats, sourceStats;
-    if (stat(filePath, &fileStats) || stat(srcPath, &sourceStats)) return 0;
-    if (fileStats.st_mtime < sourceStats.st_mtime) return 0;
-    return file_fetch(filePath, aSize);
-}
-
 VkShaderModule create_shader_module(const char* cachePath, const char* srcPath) {
     uint32_t cacheSize;
-    void* buffer = file_check(cachePath, srcPath, &cacheSize);
+    void* buffer = file_valid_check_fetch(cachePath, srcPath, &cacheSize);
     if (!buffer) {
         printf("commanD: glslangValidator -V %s -o %s\n", srcPath, cachePath);
         char cmd[512];
@@ -87,7 +51,7 @@ VkShaderModule create_shader_module(const char* cachePath, const char* srcPath) 
 
 VkPipelineCache create_pipeline_cache(const char* path, const char* src) {
     uint32_t cacheSize;
-    void* cacheBuffer = file_check(path, src, &cacheSize);
+    void* cacheBuffer = file_valid_check_fetch(path, src, &cacheSize);
 
     VkPipelineCacheCreateInfo cacheInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO,

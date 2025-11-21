@@ -64,6 +64,8 @@
         "stdlib.h": "c",
         "vulkan_instance.h": "c",
         "vulkan_swap_chain.h": "c",
-        "assert.h": "c"
+        "assert.h": "c",
+        "stdio.h": "c",
+        "string.h": "c"
     }
 }

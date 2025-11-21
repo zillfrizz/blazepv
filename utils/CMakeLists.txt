@@ -6,7 +6,6 @@ project(Blaze)
 # END PROJECT
 
 # SUBS
-add_subdirectory(utils)
 add_subdirectory(engine)
 add_subdirectory(app)
 add_subdirectory(launcher)
