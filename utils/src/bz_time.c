@@ -1,4 +1,5 @@
 #include <bz_time.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -19,7 +20,7 @@ time_t time_compare_current(time_t srcTime){
 }
 
 char* time_string(time_t srcTime) {
-    const struct tm ltime = *localtime(srcTime);
+    const struct tm ltime = *localtime(&srcTime);
 
     int buffer_size = 30; 
     char *output = malloc(buffer_size);

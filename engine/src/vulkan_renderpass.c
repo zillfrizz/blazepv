@@ -7,7 +7,7 @@
 VkRenderPass VULKAN_RENDERPASS;
 
 void vulkan_renderpass_init(void){
-    VkAttachmentDescription2 attachInfos = {
+    VkAttachmentDescription2 colorDesc = {
         .sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
         .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
@@ -21,7 +21,23 @@ void vulkan_renderpass_init(void){
         .pNext = 0
     };
 
-    VkAttachmentReference2 references = {
+    VkAttachmentDescription2 depthDesc = {
+        .sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        .format = VULKAN_SURFACE_FORMAT_DEPTH,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .flags = 0,
+        .pNext = 0
+    };
+
+    VkAttachmentDescription2 descs[2] = {colorDesc, depthDesc};
+
+    VkAttachmentReference2 colorReference = {
         .sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
         .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .attachment = 0,
@@ -29,13 +45,21 @@ void vulkan_renderpass_init(void){
         .pNext = 0
     };
 
+    VkAttachmentReference2 depthReference = {
+        .sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
+        .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        .attachment = 1,
+        .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+        .pNext = 0
+    };
+
     VkSubpassDescription2 subpass = {
         .sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2,
         .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
         .colorAttachmentCount = 1,
-        .pColorAttachments = &references,
+        .pColorAttachments = &colorReference,
         .pResolveAttachments = 0,
-        .pDepthStencilAttachment = 0,
+        .pDepthStencilAttachment = &depthReference,
         .inputAttachmentCount = 0,
         .pInputAttachments = 0,
         .viewMask = 0,
@@ -47,8 +71,8 @@ void vulkan_renderpass_init(void){
     
     VkRenderPassCreateInfo2 renderInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2,
-        .attachmentCount = 1,
-        .pAttachments = &attachInfos,
+        .attachmentCount = 2,
+        .pAttachments = descs,
         .subpassCount = 1,
         .pSubpasses = &subpass,
         .dependencyCount = 0,

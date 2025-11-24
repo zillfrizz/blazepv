@@ -66,6 +66,8 @@
         "vulkan_swap_chain.h": "c",
         "assert.h": "c",
         "stdio.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "*.in": "cpp",
+        "io.h": "c"
     }
 }

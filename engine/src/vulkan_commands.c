@@ -15,15 +15,16 @@
 VkCommandPool VULKAN_COMMAND_POOL_GRAPHICS;
 VkCommandPool VULKAN_COMMAND_POOL_TRANSFER;
 
-uint32_t VULKAN_COMMAND_BUFFERS_GRAPHICS_COUNT;
-uint32_t VULKAN_COMMAND_BUFFERS_TRANSFER_COUNT;
-
-VkCommandBuffer* VULKAN_COMMAND_BUFFERS_GRAPHICS;
-VkCommandBuffer* VULKAN_COMMAND_BUFFERS_TRANSFER;
+#define VULKAN_COMMAND_BUFFERS_FRAME_GRAPHICS_COUNT 1
+VkCommandBuffer* VULKAN_COMMAND_BUFFERS_FRAMERATE_GRAPHICS;
+#define VULKAN_COMMAND_BUFFERS_FRAME_TRANSFER_COUNT 2
+VkCommandBuffer* VULKAN_COMMAND_BUFFERS_FRAMERATE_TRANSFER;
 
 /*
     LOCAL
 */
+
+// ALLOCATION
 
 VkCommandPool vulkan_commands_create_pool(VkDevice device, uint32_t familyIndex) {
     VkCommandPool pool;
@@ -63,6 +64,8 @@ VkCommandBuffer* vulkan_commands_allocate_buffers(VkDevice device, VkCommandPool
     return buffers;
 }
 
+// ON CMD BEGIN
+
 void vulkan_commands_begin_buffer(VkCommandBuffer buffer) {
     VkCommandBufferBeginInfo beginInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -75,7 +78,16 @@ void vulkan_commands_begin_buffer(VkCommandBuffer buffer) {
 }
 
 void vulkan_commands_begin_renderpass(VkCommandBuffer buffer, VkRenderPass renderPass, VkFramebuffer framebuffer, VkExtent2D extent) {
-    VkClearValue clearValue = { .color = { {0.0f, 0.0f, 0.0f, 1.0f} } };
+    VkClearValue colorClearValue = { 
+        .color = { {0.0f, 0.0f, 0.0f, 1.0f} }
+    };
+
+    VkClearValue depthClearValue = { 
+        .depthStencil.depth = 1.0f,
+        .depthStencil.stencil = 0
+    };
+
+    VkClearValue clearValues[] = {colorClearValue, depthClearValue};
 
     VkRenderPassBeginInfo renderInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -83,23 +95,49 @@ void vulkan_commands_begin_renderpass(VkCommandBuffer buffer, VkRenderPass rende
         .framebuffer = framebuffer,
         .renderArea.offset = {0, 0},
         .renderArea.extent = extent,
-        .clearValueCount = 1,
-        .pClearValues = &clearValue,
+        .clearValueCount = 2,
+        .pClearValues = clearValues,
         .pNext = 0
     };
 
     vkCmdBeginRenderPass(buffer, &renderInfo, VK_SUBPASS_CONTENTS_INLINE);
 }
 
-void vulkan_commands_graphics_record(uint32_t bufferId) {
-    VkCommandBuffer cmd = VULKAN_COMMAND_BUFFERS_GRAPHICS[bufferId];
+// CMD RECORD
+
+void vulkan_commands_graphics_record(uint32_t frameId) {
+    VkCommandBuffer cmd = VULKAN_COMMAND_BUFFERS_FRAMERATE_GRAPHICS[frameId];
     vulkan_commands_begin_buffer(cmd);
-        vulkan_commands_begin_renderpass(cmd, VULKAN_RENDERPASS, VULKAN_FRAMEBUFFERS[bufferId], VULKAN_SURFACE_EXTENT);
+
+        VkBufferMemoryBarrier acquireBarrier = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+            .pNext = NULL,
+            .srcAccessMask = 0,
+            .dstAccessMask = VK_ACCESS_UNIFORM_READ_BIT, 
+            .srcQueueFamilyIndex = VULKAN_FAMILY_TRANSFER,
+            .dstQueueFamilyIndex = VULKAN_FAMILY_GRAPHICS,
+            .buffer = VULKAN_MATRIX_VIEW_BUFFERS[frameId],
+            .offset = 0,
+            .size = VK_WHOLE_SIZE
+        };
+
+        vkCmdPipelineBarrier(
+            cmd,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, 
+            0, 
+            0, NULL,
+            1, &acquireBarrier, 
+            0, NULL
+        );
+
+        vulkan_commands_begin_renderpass(cmd, VULKAN_RENDERPASS, VULKAN_FRAMEBUFFERS[frameId], VULKAN_SURFACE_EXTENT);
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, VULKAN_PIPELINE);
-            vkCmdPushConstants(cmd, VULKAN_PIPELINE_LAYOUT, VK_SHADER_STAGE_VERTEX_BIT, 0, 64, VULKAN_MATRIX_VIEW);
+            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, VULKAN_PIPELINE_LAYOUT, 
+                0, 1, &VULKAN_PIPELINE_DESCRIPTOR_SETS[frameId], 0, 0);
             VkDeviceSize size = sizeof(VertexData) * 36;
             VkDeviceSize offset = 0;
-            vkCmdBindVertexBuffers2(cmd, 0, 1, &VULKAN_BUFFER_VERTEX, &offset, &size, 0);
+            vkCmdBindVertexBuffers2(cmd, 0, 1, &VULKAN_BUFFERS_VERTEX[frameId], &offset, &size, 0);
             vkCmdDraw(cmd, 36, 1, 0, 0);
      vkCmdEndRenderPass(cmd);
     if (vkEndCommandBuffer(cmd) != VK_SUCCESS) {
@@ -107,11 +145,111 @@ void vulkan_commands_graphics_record(uint32_t bufferId) {
     }
 }
 
+void vulkan_commands_staging_copy_record(VkCommandBuffer* cmd, VkBuffer* srcBuffer, VkBuffer* dstBuffer, uint32_t srcOffset, uint32_t dstOffset, uint32_t size){
+     VkBufferCopy copyInfo = {
+        .srcOffset = srcOffset,
+        .dstOffset = dstOffset,
+        .size = size
+    };
+
+    vulkan_commands_begin_buffer(cmd);
+        vkCmdCopyBuffer(cmd, *srcBuffer, *dstBuffer, 1, &copyInfo);
+
+        VkBufferMemoryBarrier releaseBarrier = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+            .pNext = 0,
+            .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .dstAccessMask = 0,
+            .srcQueueFamilyIndex = VULKAN_FAMILY_TRANSFER,
+            .dstQueueFamilyIndex = VULKAN_FAMILY_GRAPHICS,
+            .buffer = *dstBuffer,
+            .offset = dstOffset,
+            .size = size
+        };
+
+        vkCmdPipelineBarrier(
+            cmd,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 
+            0, 
+            0, 0, 
+            1, &releaseBarrier, 
+            0, 0 
+        );
+
+    vkEndCommandBuffer(cmd);
+}
+
 void vulkan_commands_graphics_records(){
     for(int i = 0; i < VULKAN_SWAPCHAIN_IMAGE_COUNT; i++){
         vulkan_commands_graphics_record(i);
     }
 }
+
+void vulkan_commands_transfer_records(){
+    for(int i = 0; i < VULKAN_SWAPCHAIN_IMAGE_COUNT; i++)
+        vulkan_commands_staging_copy_record(VULKAN_COMMAND_BUFFERS_TRANSFER[i], &VULKAN_MATRIX_VIEW_BUFFER_STAGING, &VULKAN_MATRIX_VIEW_BUFFERS[i],
+            0, 0, 64
+        );
+        vulkan_commands_staging_copy_record(VULKAN_COMMAND_BUFFERS_TRANSFER[VULKAN_SWAPCHAIN_IMAGE_COUNT], &VULKAN_BUFFER_VERTEX_STAGING, &VULKAN_BUFFER_VERTEX,
+            0, 0, sizeof(VertexData) * 36
+        );
+        vulkan_commands_staging_copy_record(VULKAN_COMMAND_BUFFERS_TRANSFER[VULKAN_SWAPCHAIN_IMAGE_COUNT + 1], &VULKAN_BUFFER_INSTANCE_STAGING, &VULKAN_BUFFER_INSTANCE,
+            0, 0, sizeof(InstanceData) * 3
+        );
+}
+
+// PUBLIC INIT
+
+void vulkan_commands_transfer_view_matrix_init(uint32_t bufferId, VkFence signaledFence){
+    VkCommandBufferSubmitInfo cmdSubmitInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+        .pNext = 0,
+        .commandBuffer = VULKAN_COMMAND_BUFFERS_TRANSFER[bufferId],
+        .deviceMask = 0x1
+    };
+
+    VkSubmitInfo2 submitInfo = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+        .pNext = 0,
+        .flags = 0,
+        .commandBufferInfoCount = 1,
+        .pCommandBufferInfos = &cmdSubmitInfo,
+        .waitSemaphoreInfoCount = 0,
+        .pWaitSemaphoreInfos = 0,
+        .signalSemaphoreInfoCount = 0,
+        .pSignalSemaphoreInfos = 0
+    };
+
+    vkQueueSubmit2(VULKAN_QUEUE_TRANSFER, 1, &submitInfo, signaledFence);
+    vkWaitForFences(VULKAN_DEVICE, 1, &signaledFence, VK_TRUE, UINT64_MAX);
+    vkResetFences(VULKAN_DEVICE, 1, &signaledFence);
+}
+
+void vulkan_commands_init(void) {
+    VULKAN_COMMAND_POOL_GRAPHICS = vulkan_commands_create_pool(VULKAN_DEVICE, VULKAN_FAMILY_GRAPHICS);
+    VULKAN_COMMAND_POOL_TRANSFER = vulkan_commands_create_pool(VULKAN_DEVICE, VULKAN_FAMILY_TRANSFER);
+
+    if (VULKAN_COMMAND_POOL_GRAPHICS == VK_NULL_HANDLE || VULKAN_COMMAND_POOL_TRANSFER == VK_NULL_HANDLE) {
+        printf("Command pools creation failed.\n");
+        return;
+    }
+
+    VULKAN_COMMAND_BUFFERS_FRAMERATE_GRAPHICS = 
+    vulkan_commands_allocate_buffers(VULKAN_DEVICE, VULKAN_COMMAND_POOL_GRAPHICS, VULKAN_SWAPCHAIN_IMAGE_COUNT * VULKAN_COMMAND_BUFFERS_FRAME_GRAPHICS_COUNT);
+
+    VULKAN_COMMAND_BUFFERS_FRAMERATE_TRANSFER = 
+    vulkan_commands_allocate_buffers(VULKAN_DEVICE, VULKAN_COMMAND_POOL_TRANSFER, VULKAN_SWAPCHAIN_IMAGE_COUNT * VULKAN_COMMAND_BUFFERS_FRAME_TRANSFER_COUNT);
+
+    if (!VULKAN_COMMAND_BUFFERS_FRAMERATE_GRAPHICS || !VULKAN_COMMAND_BUFFERS_FRAMERATE_TRANSFER) {
+        printf("Command buffer allocation failed.\n");
+    }
+
+    vulkan_commands_graphics_records();
+    vulkan_commands_transfer_records();
+}
+
+// EXECUTE
 
 void vulkan_commands_graphics_execute(){
      VkCommandBufferSubmitInfo bufferSubmitInfo = {
@@ -148,33 +286,11 @@ void vulkan_commands_graphics_execute(){
     vkQueuePresentKHR(VULKAN_QUEUE_GRAPHICS, &presentInfo);
 }
 
-void vulkan_commands_transfer_view_matrix_record(uint32_t bufferId){
-     VkBufferCopy copyInfo = {
-        .srcOffset = 0,
-        .dstOffset = 0,
-        .size = 64
-    };
-
-    vulkan_commands_begin_buffer(VULKAN_COMMAND_BUFFERS_TRANSFER[bufferId]);
-        vkCmdCopyBuffer(VULKAN_COMMAND_BUFFERS_TRANSFER[bufferId], VULKAN_MATRIX_VIEW_BUFFER_STAGING, 
-            VULKAN_MATRIX_VIEW_BUFFERS[bufferId], 1, &copyInfo);
-    vkEndCommandBuffer(VULKAN_COMMAND_BUFFERS_TRANSFER[bufferId]);
-}
-
-void vulkan_commands_transfer_records(){
-    for(int i = 0; i < VULKAN_SWAPCHAIN_IMAGE_COUNT; i++)
-        vulkan_commands_transfer_view_matrix_record(i);
-}
-
-void vulkan_commands_transfer_init(){
-    vulkan_commands_transfer_records();
-}
-
-void vulkan_commands_transfer_view_matrix_execute(uint32_t bufferId){
+void vulkan_commands_transfer_execute(uint32_t frameId){
     VkCommandBufferSubmitInfo cmdSubmitInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
         .pNext = 0,
-        .commandBuffer = VULKAN_COMMAND_BUFFERS_TRANSFER[bufferId],
+        .commandBuffer = cmd,
         .deviceMask = 0x1
     };
 
@@ -193,59 +309,16 @@ void vulkan_commands_transfer_view_matrix_execute(uint32_t bufferId){
     vkQueueSubmit2(VULKAN_QUEUE_TRANSFER, 1, &submitInfo, VULKAN_SWAPCHAIN_DB_FENCES[2]);
 }
 
-/* 
-    PUBLIC
-*/
+void vulkan_commands_execute() {   
+    vkAcquireNextImageKHR(VULKAN_DEVICE, VULKAN_SWAPCHAIN, UINT64_MAX, VK_NULL_HANDLE, VULKAN_SWAPCHAIN_DB_FENCES[1], &VULKAN_SWAPCHAIN_IMAGE_INDEX);
+    vkWaitForFences(VULKAN_DEVICE, 3, VULKAN_SWAPCHAIN_DB_FENCES, VK_TRUE, UINT64_MAX);
+    vkResetFences(VULKAN_DEVICE, 3, VULKAN_SWAPCHAIN_DB_FENCES);
 
-
-
-void vulkan_commands_transfer_view_matrix_init(uint32_t bufferId, VkFence fence){
-    VkCommandBufferSubmitInfo cmdSubmitInfo = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
-        .pNext = 0,
-        .commandBuffer = VULKAN_COMMAND_BUFFERS_TRANSFER[bufferId],
-        .deviceMask = 0x1
-    };
-
-    VkSubmitInfo2 submitInfo = {
-        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
-        .pNext = 0,
-        .flags = 0,
-        .commandBufferInfoCount = 1,
-        .pCommandBufferInfos = &cmdSubmitInfo,
-        .waitSemaphoreInfoCount = 0,
-        .pWaitSemaphoreInfos = 0,
-        .signalSemaphoreInfoCount = 0,
-        .pSignalSemaphoreInfos = 0
-    };
-
-    vkQueueSubmit2(VULKAN_QUEUE_TRANSFER, 1, &submitInfo, fence);
-    vkWaitForFences(VULKAN_DEVICE, 1, &fence, VK_TRUE, UINT64_MAX);
-    vkResetFences(VULKAN_DEVICE, 1, &fence);
+    vulkan_commands_transfer_view_matrix_execute((VULKAN_SWAPCHAIN_IMAGE_INDEX + 1) % VULKAN_SWAPCHAIN_IMAGE_COUNT);
+    vulkan_commands_graphics_execute();   
 }
 
-void vulkan_commands_init(void) {
-    VULKAN_COMMAND_POOL_GRAPHICS = vulkan_commands_create_pool(VULKAN_DEVICE, VULKAN_FAMILY_GRAPHICS);
-    VULKAN_COMMAND_POOL_TRANSFER = vulkan_commands_create_pool(VULKAN_DEVICE, VULKAN_FAMILY_TRANSFER);
-
-    if (VULKAN_COMMAND_POOL_GRAPHICS == VK_NULL_HANDLE || VULKAN_COMMAND_POOL_TRANSFER == VK_NULL_HANDLE) {
-        printf("Command pools creation failed — aborting command initialization.\n");
-        return;
-    }
-
-    VULKAN_COMMAND_BUFFERS_GRAPHICS_COUNT = VULKAN_SWAPCHAIN_IMAGE_COUNT;
-    VULKAN_COMMAND_BUFFERS_GRAPHICS = vulkan_commands_allocate_buffers(VULKAN_DEVICE, VULKAN_COMMAND_POOL_GRAPHICS, VULKAN_COMMAND_BUFFERS_GRAPHICS_COUNT);
-
-    VULKAN_COMMAND_BUFFERS_TRANSFER_COUNT = VULKAN_SWAPCHAIN_IMAGE_COUNT;
-    VULKAN_COMMAND_BUFFERS_TRANSFER = vulkan_commands_allocate_buffers(VULKAN_DEVICE, VULKAN_COMMAND_POOL_TRANSFER, VULKAN_COMMAND_BUFFERS_TRANSFER_COUNT);
-
-    if (!VULKAN_COMMAND_BUFFERS_GRAPHICS || !VULKAN_COMMAND_BUFFERS_TRANSFER) {
-        printf("Command buffer allocation failed.\n");
-    }
-
-    vulkan_commands_graphics_records();
-    vulkan_commands_transfer_init();
-}
+// CLEANUP
 
 void vulkan_commands_cleanup(void) {
     vkFreeCommandBuffers(VULKAN_DEVICE, VULKAN_COMMAND_POOL_GRAPHICS, VULKAN_COMMAND_BUFFERS_GRAPHICS_COUNT, VULKAN_COMMAND_BUFFERS_GRAPHICS);
@@ -258,16 +331,3 @@ void vulkan_commands_cleanup(void) {
     VULKAN_COMMAND_BUFFERS_TRANSFER = 0;
 }
 
-void vulkan_commands_execute() {   
-    vkAcquireNextImageKHR(VULKAN_DEVICE, VULKAN_SWAPCHAIN, UINT64_MAX, VK_NULL_HANDLE, VULKAN_SWAPCHAIN_DB_FENCES[1], &VULKAN_SWAPCHAIN_IMAGE_INDEX);
-    vkWaitForFences(VULKAN_DEVICE, 3, VULKAN_SWAPCHAIN_DB_FENCES, VK_TRUE, UINT64_MAX);
-    vkResetFences(VULKAN_DEVICE, 3, VULKAN_SWAPCHAIN_DB_FENCES);
-
-    //GRAPHICS
-
-   vulkan_commands_graphics_execute();
-
-    // TRANSFER
-
-    vulkan_commands_transfer_view_matrix_execute((VULKAN_SWAPCHAIN_IMAGE_INDEX + 1) % VULKAN_SWAPCHAIN_IMAGE_COUNT);
-}

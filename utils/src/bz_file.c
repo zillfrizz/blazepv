@@ -1,4 +1,5 @@
 #include <bz_file.h>
+#include <stdlib.h>
 #include <io.h>
 #include <stdio.h>
 #include <sys/stat.h>

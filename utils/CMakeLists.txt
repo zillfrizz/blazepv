@@ -2,12 +2,14 @@
 
 # PROJECT
 cmake_minimum_required(VERSION 3.20)
-project(Blaze)
+project(BlazeUtils)
 # END PROJECT
 
-# SUBS
-add_subdirectory(engine)
-add_subdirectory(app)
-add_subdirectory(launcher)
-# END SUBS
+# CMAKE COMPONENTS
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+# CMAKE COMPONENTS
 
+include(vars)
+include(dependencies)
+include(target)
+include(properties)

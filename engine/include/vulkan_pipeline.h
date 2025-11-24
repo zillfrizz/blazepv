@@ -4,6 +4,7 @@
 #include <vulkan/vulkan.h>
 #include <volk.h>
 #include <stdint.h>
+#include <cglm/cglm.h>
 
 // PIPELINE
 extern VkPipeline VULKAN_PIPELINE;
@@ -18,13 +19,26 @@ extern VkShaderModule VULKAN_SHADER_VERTEX;
 extern VkShaderModule VULKAN_SHADER_FRAGMENT;
 
 // BUFFERS
-extern VkBuffer VULKAN_BUFFER_VERTEX;
-extern VkDeviceMemory VULKAN_BUFFER_VERTEX_MEMORY;
+extern VkBuffer* VULKAN_BUFFERS_VERTEX;
+extern VkDeviceMemory* VULKAN_BUFFERS_VERTEX_MEMORY;
+
+extern VkBuffer VULKAN_BUFFER_VERTEX_STAGING;
+extern VkDeviceMemory VULKAN_BUFFER_VERTEX_MEMORY_STAGING;
+
+extern VkBuffer* VULKAN_BUFFERS_INSTANCE;
+extern VkDeviceMemory* VULKAN_BUFFERS_INSTANCE_MEMORY;
+
+extern VkBuffer VULKAN_BUFFER_INSTANCE_STAGING;
+extern VkDeviceMemory VULKAN_BUFFER_INSTANCE_MEMORY_STAGING;
 
 typedef struct VertexData{
     float coords[3];
     uint32_t faceId;
 } VertexData;
+
+typedef struct InstanceData{
+    mat4 modelMat;
+} InstanceData;
 
 
 void vulkan_pipeline_init(void);

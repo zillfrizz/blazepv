@@ -7,19 +7,22 @@
 #include <string.h>
 #include <stdio.h>
 
-float value;
 mat4 VULKAN_MATRIX_VIEW;
 
 VkBuffer* VULKAN_MATRIX_VIEW_BUFFERS;
 VkDeviceMemory* VULKAN_MATRIX_VIEW_BUFFERS_MEMORY;
-
 VkBuffer VULKAN_MATRIX_VIEW_BUFFER_STAGING;
 VkDeviceMemory VULKAN_MATRIX_VIEW_BUFFER_STAGING_MEMORY;
+VkCommandBuffer* VULKAN_MATRIX_VIEW_BUFFERS_COMMAND;
 
 void view_matrices_update(){
-    value = fmodf(value * 1.1f, 2.0f);
-    glm_mat4_identity(VULKAN_MATRIX_VIEW);
-    glm_mat4_scale(VULKAN_MATRIX_VIEW, value);
+    vec3 axis = {0.0f, 1.0f, 0.0f};
+    glm_rotate(VULKAN_MATRIX_VIEW, 0.001f, axis);
+    
+    void* map;
+    vkMapMemory(VULKAN_DEVICE, VULKAN_MATRIX_VIEW_BUFFER_STAGING_MEMORY, 0, 64, 0, &map);
+    memcpy(map, VULKAN_MATRIX_VIEW, 64);
+    vkUnmapMemory(VULKAN_DEVICE, VULKAN_MATRIX_VIEW_BUFFER_STAGING_MEMORY);
 }
 
 void view_matrices_staging_buffer_init(){
@@ -133,6 +136,22 @@ void view_matrices_buffers_init(){
 
 void view_matrices_init(){
     glm_mat4_identity(VULKAN_MATRIX_VIEW);
+    glm_translate_z(VULKAN_MATRIX_VIEW, -5.0f);
+    float fov_degrees = 60.0f;
+    float aspect_ratio = 800.0f / 600.0f; // Exemple pour une fenêtre 800x600
+    float near_plane = 0.1f;
+    float far_plane = 100.0f;
+    float fov_radians = GLM_PI / 180.0f * fov_degrees;
+    mat4 persp;
+    glm_perspective(
+    fov_radians,
+    aspect_ratio,
+    near_plane,
+    far_plane,
+    persp 
+    );
+    glm_mat4_mul(persp, VULKAN_MATRIX_VIEW, VULKAN_MATRIX_VIEW);
+    
     view_matrices_buffers_init();
     view_matrices_staging_buffer_init();
 }

@@ -11,6 +11,7 @@ find_package(cglm CONFIG REQUIRED)
 # END PACKAGES
 
 set(DEPENDENCIES
+    blaze_utils
     cglm::cglm
     volk::volk
     json-c::json-c

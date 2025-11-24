@@ -53,6 +53,7 @@ int main(int argc, char** argv){
     //thread = _beginthreadex(0, 0, windows_input_acquire, &quit, 0, &threadId);
     while(!quit){
         windows_input_acquire(&quit);
+        view_matrices_update();
         vulkan_commands_execute();
     }
     return 0;

@@ -1,7 +1,7 @@
 #include <vulkan_instance.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "tab.h"
+#include <bz_tab.h>
 #include "string.h"
 #include "vulkan_device.h"
 #include <SDL_vulkan.h>

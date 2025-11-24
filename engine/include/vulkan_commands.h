@@ -7,11 +7,8 @@
 extern VkCommandPool VULKAN_COMMAND_POOL_GRAPHICS;
 extern VkCommandPool VULKAN_COMMAND_POOL_TRANSFER;
 
-extern uint32_t VULKAN_COMMAND_BUFFERS_GRAPHICS_COUNT;
-extern uint32_t VULKAN_COMMAND_BUFFERS_TRANSFER_COUNT;
-
-extern VkCommandBuffer* VULKAN_COMMAND_BUFFERS_GRAPHICS;
-extern VkCommandBuffer* VULKAN_COMMAND_BUFFERS_TRANSFER;
+extern VkCommandBuffer* VULKAN_COMMAND_BUFFERS_FRAMERATE_GRAPHICS;
+extern VkCommandBuffer* VULKAN_COMMAND_BUFFERS_FRAMERATE_TRANSFER;
 
 void vulkan_commands_init(void);
 void vulkan_commands_cleanup(void);

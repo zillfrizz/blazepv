@@ -15,15 +15,73 @@ uint32_t WINDOW_HEIGHT = 600;
 //SURFACES
 VkSurfaceKHR VULKAN_SURFACE;
 VkSurfaceFormat2KHR VULKAN_SURFACE_FORMAT;
+VkFormat VULKAN_SURFACE_FORMAT_DEPTH;
 VkExtent2D VULKAN_SURFACE_EXTENT;
 VkSurfaceCapabilities2KHR VULKAN_SURFACE_CAPABILITIES;
 
 const char* vkFormatToString(VkFormat format) {
     switch (format) {
-        case VK_FORMAT_B8G8R8A8_SRGB: return "VK_FORMAT_B8G8R8A8_SRGB";
-        case VK_FORMAT_R8G8B8A8_UNORM: return "VK_FORMAT_R8G8B8A8_UNORM";
-        // ajouter tous les formats que tu veux
-        default: return "UNKNOWN_FORMAT";
+        // ==========================================================
+        // 1. FORMATS COULEUR (LES PLUS COURANTS)
+        // ==========================================================
+        
+        // Formats 32 bits par pixel (8 bits/canal)
+        case VK_FORMAT_R8G8B8A8_UNORM:          return "VK_FORMAT_R8G8B8A8_UNORM";
+        case VK_FORMAT_R8G8B8A8_SRGB:           return "VK_FORMAT_R8G8B8A8_SRGB";
+        case VK_FORMAT_B8G8R8A8_UNORM:          return "VK_FORMAT_B8G8R8A8_UNORM";
+        case VK_FORMAT_B8G8R8A8_SRGB:           return "VK_FORMAT_B8G8R8A8_SRGB";
+
+        // Formats 24 bits par pixel (8 bits/canal sans A)
+        case VK_FORMAT_R8G8B8_UNORM:             return "VK_FORMAT_R8G8B8_UNORM";
+        case VK_FORMAT_B8G8R8_UNORM:             return "VK_FORMAT_B8G8R8_UNORM";
+
+        // Formats 16 bits flottants (HDR)
+        case VK_FORMAT_R16G16B16A16_SFLOAT:      return "VK_FORMAT_R16G16B16A16_SFLOAT";
+
+        // Formats 32 bits flottants (pour calcul/HDR)
+        case VK_FORMAT_R32G32B32A32_SFLOAT:      return "VK_FORMAT_R32G32B32A32_SFLOAT";
+        
+        // ==========================================================
+        // 2. FORMATS PROFONDEUR / STENCIL (Z-BUFFER)
+        // ==========================================================
+        
+        // Profondeur 32 bits flottant (haute précision)
+        case VK_FORMAT_D32_SFLOAT:              return "VK_FORMAT_D32_SFLOAT";
+        
+        // Profondeur 24 bits + Stencil 8 bits (le plus courant)
+        case VK_FORMAT_D24_UNORM_S8_UINT:       return "VK_FORMAT_D24_UNORM_S8_UINT";
+        
+        // Profondeur 32 bits flottant + Stencil 8 bits
+        case VK_FORMAT_D32_SFLOAT_S8_UINT:      return "VK_FORMAT_D32_SFLOAT_S8_UINT";
+        
+        // Profondeur 16 bits (faible précision)
+        case VK_FORMAT_D16_UNORM:               return "VK_FORMAT_D16_UNORM";
+        
+        // ==========================================================
+        // 3. FORMATS COMPRESSÉS (pour les textures)
+        // ==========================================================
+        
+        // BC1 (DXT1)
+        case VK_FORMAT_BC1_RGB_UNORM_BLOCK:     return "VK_FORMAT_BC1_RGB_UNORM_BLOCK";
+        case VK_FORMAT_BC1_RGBA_UNORM_BLOCK:    return "VK_FORMAT_BC1_RGBA_UNORM_BLOCK";
+
+        // BC3 (DXT5)
+        case VK_FORMAT_BC3_UNORM_BLOCK:         return "VK_FORMAT_BC3_UNORM_BLOCK";
+        
+        // ==========================================================
+        // 4. FORMATS MIXTES ET DIVERS
+        // ==========================================================
+        
+        // Formats compacts (couramment utilisé pour les attributs de sommets)
+        case VK_FORMAT_R32G32_SFLOAT:           return "VK_FORMAT_R32G32_SFLOAT";
+        case VK_FORMAT_R32G32B32_SFLOAT:        return "VK_FORMAT_R32G32B32_SFLOAT";
+        
+        // Formats Entier (pour le stockage de données ou le Color ID)
+        case VK_FORMAT_R32_UINT:                return "VK_FORMAT_R32_UINT";
+        
+        // ==========================================================
+        
+        default:                                return "UNKNOWN_FORMAT";
     }
 }
 
@@ -241,6 +299,38 @@ void windows_init(void) {
     }
 }
 
+void surface_vulkan_list_valid_color_formats(uint32_t formatCount, VkSurfaceFormat2KHR* formats){
+    for(int i = 0; i < formatCount; i++){
+        VkImageFormatProperties props;
+        if(!vkGetPhysicalDeviceImageFormatProperties(
+            VULKAN_PHYSICAL_DEVICE,
+            formats[i].surfaceFormat.format,
+            VK_IMAGE_TYPE_2D,
+            VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+            0,
+            &props
+        ))
+            printf("\t%d, %s, %s\n", i, vkColorSpaceToString(formats[i].surfaceFormat.colorSpace), vkFormatToString(formats[i].surfaceFormat.format));
+    }
+}
+
+void surface_vulkan_list_valid_depth_formats(uint32_t formatCount, VkFormat* formats){
+    for(int i = 0; i < formatCount; i++){
+        VkImageFormatProperties props;
+        if(!vkGetPhysicalDeviceImageFormatProperties(
+            VULKAN_PHYSICAL_DEVICE,
+            formats[i],
+            VK_IMAGE_TYPE_2D,
+            VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+            0,
+            &props
+        ))
+            printf("\t%d, %s\n", i, vkFormatToString(formats[i]));
+    }
+}
+
 void surface_vulkan_init_format_extent(void){
 
     VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = {
@@ -258,24 +348,29 @@ void surface_vulkan_init_format_extent(void){
     }
     vkGetPhysicalDeviceSurfaceFormats2KHR(VULKAN_PHYSICAL_DEVICE, &surfaceInfo, &formatCount, formats);
 
-    printf("choose one format by id:\n");
-    for(int i = 0; i < formatCount; i++){
-        VkImageFormatProperties props;
-        if(!vkGetPhysicalDeviceImageFormatProperties(
-            VULKAN_PHYSICAL_DEVICE,
-            formats[i].surfaceFormat.format,
-            VK_IMAGE_TYPE_2D,
-            VK_IMAGE_TILING_OPTIMAL,
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-            0,
-            &props
-        ))
-            printf("\t%d, %s, %s\n", i, vkColorSpaceToString(formats[i].surfaceFormat.colorSpace), vkFormatToString(formats[i].surfaceFormat.format));
-    }
-    uint32_t formatId;
-    scanf("%" SCNu32, &formatId);
-    printf("\n");
-    VULKAN_SURFACE_FORMAT = formats[formatId];
+    VkFormat depthFormats[] = {
+        VK_FORMAT_D32_SFLOAT_S8_UINT,
+        VK_FORMAT_D32_SFLOAT,
+        VK_FORMAT_X8_D24_UNORM_PACK32,
+        VK_FORMAT_D24_UNORM_S8_UINT,
+        VK_FORMAT_D16_UNORM_S8_UINT,
+        VK_FORMAT_D16_UNORM
+    };
+
+    uint32_t depthFormatsCount = sizeof(depthFormats) / sizeof(VkFormat);
+
+    uint32_t colorId, depthId;
+    printf("choose color format by id:\n");
+    surface_vulkan_list_valid_color_formats(formatCount, formats);
+    scanf("%" SCNu32, &colorId);
+    printf("%s color format chosen.\n", vkFormatToString(formats[colorId].surfaceFormat.format));
+
+    printf("choose depth format by id:\n");
+    surface_vulkan_list_valid_depth_formats(depthFormatsCount, depthFormats);
+    scanf("%" SCNu32, &depthId);
+    printf("%s depth format chosen.\n", vkFormatToString(formats[depthId].surfaceFormat.format));
+    VULKAN_SURFACE_FORMAT = formats[colorId];
+    VULKAN_SURFACE_FORMAT_DEPTH = depthFormats[depthId];
         
     VULKAN_SURFACE_CAPABILITIES.sType = VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR;
     VULKAN_SURFACE_CAPABILITIES.pNext = 0;

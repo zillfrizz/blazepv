@@ -7,7 +7,8 @@
 #include <vulkan_renderpass.h>
 #include <windows1.h>
 #include <camera.h>
-#include <file.h>
+#include <bz_file.h>
+#include <config.h>
 
 // PIPELINE
 VkPipeline VULKAN_PIPELINE;
@@ -22,11 +23,20 @@ VkShaderModule VULKAN_SHADER_VERTEX;
 VkShaderModule VULKAN_SHADER_FRAGMENT;
 
 // BUFFERS
-VkBuffer VULKAN_BUFFER_VERTEX;
-VkDeviceMemory VULKAN_BUFFER_VERTEX_MEMORY;
+VkBuffer* VULKAN_BUFFERS_VERTEX;
+VkDeviceMemory* VULKAN_BUFFERS_VERTEX_MEMORY;
 
+VkBuffer VULKAN_BUFFER_VERTEX_STAGING;
+VkDeviceMemory VULKAN_BUFFER_VERTEX_MEMORY_STAGING;
 
-VkShaderModule create_shader_module(const char* cachePath, const char* srcPath) {
+VkBuffer* VULKAN_BUFFERS_INSTANCE;
+VkDeviceMemory* VULKAN_BUFFERS_INSTANCE_MEMORY;
+
+VkBuffer VULKAN_BUFFER_INSTANCE_STAGING;
+VkDeviceMemory VULKAN_BUFFER_INSTANCE_MEMORY_STAGING;
+
+// COMPILE/LOAD A SHADER MODULE
+VkShaderModule vulkan_pipeline_shader_module_load(const char* cachePath, const char* srcPath) {
     uint32_t cacheSize;
     void* buffer = file_valid_check_fetch(cachePath, srcPath, &cacheSize);
     if (!buffer) {
@@ -49,7 +59,8 @@ VkShaderModule create_shader_module(const char* cachePath, const char* srcPath) 
     return module;
 }
 
-VkPipelineCache create_pipeline_cache(const char* path, const char* src) {
+// LOAD PIPELINE CACHE
+VkPipelineCache vulkan_pipeline_cache_load(const char* path, const char* src) {
     uint32_t cacheSize;
     void* cacheBuffer = file_valid_check_fetch(path, src, &cacheSize);
 
@@ -65,19 +76,21 @@ VkPipelineCache create_pipeline_cache(const char* path, const char* src) {
     return cache;
 }
 
-VkDescriptorPool create_pipeline_descriptor_pool(void){
-     VkDescriptorPoolSize descPoolSize = {
-        .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        .descriptorCount = 3
-    };
+// CREATE A DESCRIPTOR POOL
+VkDescriptorPool vulkan_pipeline_descriptor_pool_create(const uint32_t typeCount, const VkDescriptorType* types, const uint32_t* counts, const uint32_t maxSets){
+    VkDescriptorPoolSize* sizes = malloc(sizeof(VkDescriptorPoolSize) * typeCount);
+    for(int i = 0; i < typeCount; i++){
+        sizes[i].type = types[i];
+        sizes[i].descriptorCount = counts[i];
+    }
 
     VkDescriptorPoolCreateInfo descPoolInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .flags = 0,
         .pNext = 0,
-        .maxSets = VULKAN_SWAPCHAIN_IMAGE_COUNT,
-        .poolSizeCount = 1,
-        .pPoolSizes = &descPoolSize  
+        .maxSets = maxSets,
+        .poolSizeCount = typeCount,
+        .pPoolSizes = sizes 
     };
 
     VkDescriptorPool pool;
@@ -85,21 +98,14 @@ VkDescriptorPool create_pipeline_descriptor_pool(void){
     return pool;
 }
 
-VkDescriptorSetLayout create_pipeline_descriptor_set_layout(void){
-    VkDescriptorSetLayoutBinding descSetLayoutBind = {
-        .binding = 0,
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-        .pImmutableSamplers = 0
-    };
-
+// CREATE A DESCRIPTOR SET LAYOUT
+VkDescriptorSetLayout vulkan_pipeline_descriptor_set_layout_create(uint32_t bindCount, VkDescriptorSetLayoutBinding* binds){
     VkDescriptorSetLayoutCreateInfo descLayoutInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
         .flags = 0,
         .pNext = 0,
-        .bindingCount = 1,
-        .pBindings = &descSetLayoutBind
+        .bindingCount = bindCount,
+        .pBindings = binds
     };
 
     VkDescriptorSetLayout layout;
@@ -107,14 +113,14 @@ VkDescriptorSetLayout create_pipeline_descriptor_set_layout(void){
     return layout;
 }
 
-VkDescriptorSet* create_pipeline_descriptor_sets(VkDescriptorPool descPool,
-     uint32_t setCount, VkDescriptorSetLayout* layouts){
+// CREATE DESCRIPTOR SETS
+VkDescriptorSet* vulkan_pipeline_descriptor_sets_create(VkDescriptorPool descPool, uint32_t setCount, VkDescriptorSetLayout* layouts){
     VkDescriptorSetAllocateInfo descSetAllocInfo = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
         .pNext = 0,
         .descriptorPool = descPool,
         .descriptorSetCount = setCount,
-        .pSetLayouts = &layouts,
+        .pSetLayouts = layouts,
     };
 
     VkDescriptorSet* sets = malloc(sizeof(VkDescriptorSet) * setCount);
@@ -122,46 +128,54 @@ VkDescriptorSet* create_pipeline_descriptor_sets(VkDescriptorPool descPool,
     return sets;
 }
 
-void pipeline_init_descriptors(void){
+// WRITE ON DESCRIPTORS SETS
+void vulkan_pipeline_descriptors_sets_write(uint32_t count, VkBuffer* srcBuffers, VkDeviceSize* srcOffsets, VkDeviceSize* srcRanges, 
+    VkDescriptorSet* dstDescriptorSets, uint32_t* dstBindings, uint32_t* dstDescriptorCounts, VkDescriptorType* dstTypes){
+
+    VkDescriptorBufferInfo* bufferInfos = malloc(sizeof(VkDescriptorBufferInfo) * count);
+    VkWriteDescriptorSet* writeInfos = malloc(sizeof(VkWriteDescriptorSet) * count);
+
     for(int i = 0; i < VULKAN_SWAPCHAIN_IMAGE_COUNT; i++){
         VkDescriptorBufferInfo bufferInfo = {
-        .buffer = VULKAN_MATRIX_VIEW_BUFFERS[i],
-        .offset = 0,
-        .range = sizeof(UniformBufferObject)
-    };
+            .buffer = srcBuffers[i],
+            .offset = srcOffsets[i],
+            .range = srcRanges[i]
+        };
+        bufferInfos[i] = bufferInfo;
 
-    VkWriteDescriptorSet descriptorWrite = {
-        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .dstSet = descriptorSet,
-        .dstBinding = 0,
-        .dstArrayElement = 0,
-        .descriptorCount = 1,
-        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        .pBufferInfo = &bufferInfo
-    };
-
-    vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, NULL);
+        VkWriteDescriptorSet writeInfo = {
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = dstDescriptorSets[i],
+            .dstBinding = dstBindings[i],
+            .dstArrayElement = 0,
+            .descriptorCount = dstDescriptorCounts[i],
+            .descriptorType = dstTypes[i],
+            .pBufferInfo = &bufferInfos[i]
+        };
+        writeInfos[i] = writeInfo;
     }
+
+    vkUpdateDescriptorSets(VULKAN_DEVICE, count, &writeInfos, 0, 0);
 }
 
-VkPipelineLayout create_pipeline_layout(void) {
-
-
+// CREATE PIPELINE LAYOUT
+VkPipelineLayout vulkan_pipeline_layout_create(uint32_t rangeCount, VkPushConstantRange* ranges, uint32_t layoutCount, VkDescriptorSetLayout* layouts) {
 
     VkPipelineLayoutCreateInfo layoutInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .pushConstantRangeCount = 0,
-        .pPushConstantRanges = 0,
-        .setLayoutCount = 1,
-        .pSetLayouts = &VULKAN_PIPELINE_DESCRIPTOR_SET_LAYOUT,
         .flags = 0,
-        .pNext = 0
+        .pNext = 0,
+        .pushConstantRangeCount = rangeCount,
+        .pPushConstantRanges = ranges,
+        .setLayoutCount = layoutCount,
+        .pSetLayouts = layouts
     };
 
     VkPipelineLayout layout;
     vkCreatePipelineLayout(VULKAN_DEVICE, &layoutInfo, 0, &layout);
     return layout;
 }
+
 
 VkPipeline create_graphics_pipeline(VkShaderModule vert, VkShaderModule frag, VkPipelineLayout layout, VkPipelineCache cache) {
     /*
@@ -187,20 +201,29 @@ VkPipeline create_graphics_pipeline(VkShaderModule vert, VkShaderModule frag, Vk
         VERTEX INPUT
     */
 
-    VkVertexInputBindingDescription bindDesc = {
-        .binding = 0, .stride = sizeof(VertexData), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+    VkVertexInputBindingDescription bindDesc[] = {
+        {.binding = 0, .stride = sizeof(VertexData), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX},
+        {.binding = 1, .stride = sizeof(InstanceData), .inputRate = VK_VERTEX_INPUT_RATE_INSTANCE}
     };
 
     VkVertexInputAttributeDescription attrDesc[] = {
-        {.binding = 0, .location = 0, .format = VK_FORMAT_R32G32_SFLOAT, .offset = 0 },
-        {.binding = 0, .location = 1, .format = VK_FORMAT_R32_UINT, .offset = sizeof(float) * 3}
+        // VERTEX
+        {.binding = 0, .location = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = 0 },
+        {.binding = 0, .location = 1, .format = VK_FORMAT_R32_UINT, .offset = sizeof(float) * 3},
+        // INSTANCE
+        {.binding = 1, .location = 0, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = 0},
+        {.binding = 1, .location = 1, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(vec4)},
+        {.binding = 1, .location = 2, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(vec4) * 2},
+        {.binding = 1, .location = 3, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = sizeof(vec4) * 3}
     };
 
     VkPipelineVertexInputStateCreateInfo vertInputInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .vertexBindingDescriptionCount = 1,
-        .pVertexBindingDescriptions = &bindDesc,
-        .vertexAttributeDescriptionCount = 2,
+        .flags = 0,
+        .pNext = 0,
+        .vertexBindingDescriptionCount = 2,
+        .pVertexBindingDescriptions = bindDesc,
+        .vertexAttributeDescriptionCount = 6,
         .pVertexAttributeDescriptions = attrDesc
     };
 
@@ -239,6 +262,8 @@ VkPipeline create_graphics_pipeline(VkShaderModule vert, VkShaderModule frag, Vk
         //.cullMode = VK_CULL_MODE_BACK_BIT,
         .cullMode = VK_CULL_MODE_NONE,
         .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+        .depthClampEnable = VK_FALSE,
+        .depthBiasEnable = VK_FALSE,
         .lineWidth = 1.0f
     };
 
@@ -257,6 +282,17 @@ VkPipeline create_graphics_pipeline(VkShaderModule vert, VkShaderModule frag, Vk
         .attachmentCount = 1, .pAttachments = &blendAttachment
     };
 
+    VkPipelineDepthStencilStateCreateInfo depthInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+        .flags = 0,
+        .pNext = 0,
+        .depthTestEnable = VK_TRUE,
+        .depthWriteEnable = VK_TRUE,
+        .depthCompareOp = VK_COMPARE_OP_LESS,
+        .depthBoundsTestEnable = VK_FALSE,
+        .stencilTestEnable = VK_FALSE
+    };
+
     /*
         PIPELINE
     */
@@ -271,6 +307,7 @@ VkPipeline create_graphics_pipeline(VkShaderModule vert, VkShaderModule frag, Vk
         .pRasterizationState = &rasterInfo,
         .pMultisampleState = &sampleInfo,
         .pColorBlendState = &blendInfo,
+        .pDepthStencilState = &depthInfo,
         .layout = layout,
         .renderPass = VULKAN_RENDERPASS,
         .subpass = 0
@@ -284,11 +321,13 @@ VkPipeline create_graphics_pipeline(VkShaderModule vert, VkShaderModule frag, Vk
     return pipeline;
 }
 
-void create_vertex_buffer(VkBuffer* buffer, VkDeviceMemory* memory) {
+void create_vertex_buffer(VkBuffer* buffer, VkDeviceMemory* memory, uint32_t size) {
     VkBufferCreateInfo bufferInfo = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .size = sizeof(VertexData) * 36,
-        .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        .size = size,
+        .queueFamilyIndexCount = 2,
+        .pQueueFamilyIndices = VULKAN_FAMILIES,
+        .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE
     };
 
@@ -308,15 +347,15 @@ void create_vertex_buffer(VkBuffer* buffer, VkDeviceMemory* memory) {
     VkMemoryAllocateInfo allocInfo = {
         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
         .allocationSize = memReq.memoryRequirements.size,
-        .memoryTypeIndex = vulkan_device_get_memory_type(&memReq, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+        .memoryTypeIndex = vulkan_device_get_memory_type(&memReq, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
     };
 
     vkAllocateMemory(VULKAN_DEVICE, &allocInfo, 0, memory);
 
     VkBindBufferMemoryInfo bindInfo = {
         .sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
-        .buffer = VULKAN_BUFFER_VERTEX,
-        .memory = VULKAN_BUFFER_VERTEX_MEMORY,
+        .buffer = *buffer,
+        .memory = *memory,
         .memoryOffset = 0,
         .pNext = 0
     };
@@ -324,53 +363,120 @@ void create_vertex_buffer(VkBuffer* buffer, VkDeviceMemory* memory) {
     vkBindBufferMemory2(VULKAN_DEVICE, 1, &bindInfo);
 }
 
-void fill_vertex_buffer(void* data) {
+void create_vertex_staging_buffer(VkBuffer* stagingBuffer, VkDeviceMemory* stagingMemory, uint32_t size){
+    VkBufferCreateInfo bufferInfo = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .flags = 0,
+        .pNext = 0,
+        .size = size,
+        .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        .queueFamilyIndexCount = 1,
+        .pQueueFamilyIndices = &VULKAN_FAMILIES[VULKAN_FAMILY_TRANSFER],
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE
+    };
+
+    vkCreateBuffer(VULKAN_DEVICE, &bufferInfo, 0, stagingBuffer);
+
+    VkBufferMemoryRequirementsInfo2 memReqInfo = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
+        .buffer = *stagingBuffer
+    };
+
+    VkMemoryRequirements2 memReq = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2
+    };
+
+    vkGetBufferMemoryRequirements2(VULKAN_DEVICE, &memReqInfo, &memReq);
+
+    VkMemoryAllocateInfo allocInfo = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .allocationSize = memReq.memoryRequirements.size,
+        .memoryTypeIndex = vulkan_device_get_memory_type(&memReq, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+    };
+
+    vkAllocateMemory(VULKAN_DEVICE, &allocInfo, 0, stagingMemory);
+
+    VkBindBufferMemoryInfo bindInfo = {
+        .sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
+        .buffer = *stagingBuffer,
+        .memory = *stagingMemory,
+        .memoryOffset = 0,
+        .pNext = 0
+    };
+
+    vkBindBufferMemory2(VULKAN_DEVICE, 1, &bindInfo);
+}
+
+void fill_vertex_buffer(void* data, uint32_t size, VkBuffer* stagingBuffer, VkDeviceMemory* stagingMemory, VkBuffer* vertexBuffer, VkDeviceMemory* vertexMemory) {
     void* map;
 
-    VkMemoryMapInfo mapInfo = {
-        .sType = VK_STRUCTURE_TYPE_MEMORY_MAP_INFO,
-        .memory = VULKAN_BUFFER_VERTEX_MEMORY,
-        .offset = 0,
-        .size = VK_WHOLE_SIZE,
-        .flags = 0,
-        .pNext = 0
-    };
+    vkMapMemory(VULKAN_DEVICE, *stagingMemory, 0, size * 36, 0, &map);
+    memcpy(map, data, size * 36);
+    vkUnmapMemory(VULKAN_DEVICE, *stagingMemory);
 
-    VkMemoryUnmapInfo unmapInfo = {
-        .sType = VK_STRUCTURE_TYPE_MEMORY_UNMAP_INFO,
-        .memory = VULKAN_BUFFER_VERTEX_MEMORY,
-        .flags = 0,
-        .pNext = 0
-    };
 
-    vkMapMemory(VULKAN_DEVICE, VULKAN_BUFFER_VERTEX_MEMORY, 0, sizeof(VertexData) * 36, 0, &map);
-    memcpy(map, data, sizeof(VertexData) * 36);
-    vkUnmapMemory(VULKAN_DEVICE, VULKAN_BUFFER_VERTEX_MEMORY);
 }
 
 /*
     PUBLIC
 */ 
 
+// 
 void vulkan_vertex_buffer_transfer(VkBuffer buffer, uint32_t transferSize, uint32_t transferOffset, void* pTransferData){
 
 }
 
-void vulkan_pipeline_init(void) {
-    VULKAN_SHADER_VERTEX = create_shader_module(SHADER_VERTEX_PATH, SHADER_VERTEX_SRC_PATH);
-    VULKAN_SHADER_FRAGMENT = create_shader_module(SHADER_FRAGMENT_PATH, SHADER_FRAGMENT_SRC_PATH);
-    VULKAN_PIPELINE_CACHE = create_pipeline_cache(PIPELINE_PATH, PIPELINE_SRC_PATH);
-    VULKAN_PIPELINE_DESCRIPTOR_POOL = create_pipeline_descriptor_pool();
-    VULKAN_PIPELINE_DESCRIPTOR_SET_LAYOUT = create_pipeline_descriptor_set_layout();
+// COMPILE/LOAD SHADERS
+void vulkan_pipeline_shaders_init(void){
+    VULKAN_SHADER_VERTEX = create_shader_module(ENGINE_DIR"/cache/shader.vert.spv", ENGINE_DIR"/assets/shaders/shader.vert");
+    VULKAN_SHADER_FRAGMENT = create_shader_module(ENGINE_DIR"/cache/shader.frag.spv", ENGINE_DIR"/assets/shaders/shader.frag");
+}
+
+// LOAD CACHE
+void vulkan_pipeline_cache_init(void){
+    VULKAN_PIPELINE_CACHE = create_pipeline_cache(ENGINE_DIR"/src/vulkan_pipeline.c", ENGINE_DIR"/assets/pipelines/vulkan_pipeline.bin");
+}
+
+// CREATE PIPELINE DESCRIPTORS SETS LAYOUT, DESCRIPTOR POOL, DESCRIPTOR SETS & DESCRIPTOR SET LAYOUT
+void vulkan_pipeline_description_init(void){
+    // LAYOUTS
+    VkDescriptorSetLayoutBinding descSetLayoutBind = {
+        .binding = 0,
+        .descriptorCount = 1,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+        .pImmutableSamplers = 0
+    };
+
+    VULKAN_PIPELINE_DESCRIPTOR_SET_LAYOUT = vulkan_pipeline_descriptor_set_layout_create(1, &descSetLayoutBind);
     VkDescriptorSetLayout* layouts = malloc(sizeof(VkDescriptorSetLayout) * VULKAN_SWAPCHAIN_IMAGE_COUNT);
     for(int i = 0; i < VULKAN_SWAPCHAIN_IMAGE_COUNT; i++)
         layouts[i] = VULKAN_PIPELINE_DESCRIPTOR_SET_LAYOUT;
-    VULKAN_PIPELINE_DESCRIPTOR_SETS = create_pipeline_descriptor_sets(VULKAN_PIPELINE_DESCRIPTOR_POOL,
-        VULKAN_SWAPCHAIN_IMAGE_COUNT, layouts);
+    
+    // POOL
+    VkDescriptorType types[] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER};
+    uint32_t counts[] = {VULKAN_SWAPCHAIN_IMAGE_COUNT};
+    VULKAN_PIPELINE_DESCRIPTOR_POOL = create_pipeline_descriptor_pool(1, types, counts, VULKAN_SWAPCHAIN_IMAGE_COUNT);
+
+    // SETS
+
+    VULKAN_PIPELINE_DESCRIPTOR_SETS = create_pipeline_descriptor_sets(VULKAN_PIPELINE_DESCRIPTOR_POOL, VULKAN_SWAPCHAIN_IMAGE_COUNT, layouts);
     free(layouts);
+
+    // INITIALISATION WRITE ON SETS
+    pipeline_init_descriptors();
+
+    // PIPELINE LAYOUT
     VULKAN_PIPELINE_LAYOUT = create_pipeline_layout();
-    VULKAN_PIPELINE = create_graphics_pipeline(VULKAN_SHADER_VERTEX, VULKAN_SHADER_FRAGMENT, VULKAN_PIPELINE_LAYOUT, VULKAN_PIPELINE_CACHE);
-    create_vertex_buffer(&VULKAN_BUFFER_VERTEX, &VULKAN_BUFFER_VERTEX_MEMORY);
+}
+
+// CREATE AND FILL VERTEX BUFFERS WITH INITIAL VALUES
+void vulkan_pipeline_vertex_buffers_init(void){
+    create_vertex_staging_buffer(&VULKAN_BUFFER_VERTEX_MEMORY_STAGING, &VULKAN_BUFFER_VERTEX_MEMORY_STAGING, sizeof(VertexData) * 36);
+    create_vertex_buffer(&VULKAN_BUFFERS_VERTEX, &VULKAN_BUFFERS_VERTEX_MEMORY, sizeof(VertexData) * 36);
+    create_vertex_staging_buffer(&VULKAN_BUFFER_INSTANCE_STAGING, &VULKAN_BUFFER_INSTANCE_MEMORY_STAGING, sizeof(InstanceData) * 3);
+    create_vertex_buffer(&VULKAN_BUFFERS_INSTANCE, &VULKAN_BUFFERS_INSTANCE_MEMORY, sizeof(InstanceData) * 3);
+
     VertexData data[] = {
         // Face avant (Z = +0.5)
         {{-0.5f, -0.5f,  0.5f}, 0},
@@ -427,22 +533,66 @@ void vulkan_pipeline_init(void) {
         {{ 0.5f, -0.5f,  0.5f}, 5}
     };
 
-    fill_vertex_buffer(data);
+    InstanceData initial;
+    glm_mat4_identity(initial.modelMat);
+
+    InstanceData initials[] = {initial, initial, initial};
+
+    for(int i = 0; i < VULKAN_SWAPCHAIN_IMAGE_COUNT; i++){
+        fill_vertex_buffer(data, sizeof(VertexData) * 36, &VULKAN_BUFFER_VERTEX_STAGING, &VULKAN_BUFFER_VERTEX_MEMORY_STAGING,
+            &VULKAN_BUFFERS_VERTEX[i], &VULKAN_BUFFERS_VERTEX_MEMORY[i]
+        );
+        fill_vertex_buffer(initials, sizeof(InstanceData) * 3, &VULKAN_BUFFER_INSTANCE_STAGING, &VULKAN_BUFFER_INSTANCE_MEMORY_STAGING,
+            &VULKAN_BUFFERS_INSTANCE[i], &VULKAN_BUFFERS_INSTANCE_MEMORY[i]
+        );
+    }
+}
+
+// MAIN INIT FUNCTION (SHADERS -> CACHE -> DESCRIPTION -> VERTEX BUFFERS -> PIPELINE)
+void vulkan_pipeline_init(void) {
+    vulkan_pipeline_shaders_init();
+    vulkan_pipeline_cache_init();
+    vulkan_pipeline_description_init();
+    vulkan_pipeline_vertex_buffers_init();
+    VULKAN_PIPELINE = create_graphics_pipeline(VULKAN_SHADER_VERTEX, VULKAN_SHADER_FRAGMENT, VULKAN_PIPELINE_LAYOUT, VULKAN_PIPELINE_CACHE);
 }
 
 void vulkan_pipeline_cleanup(void) {
+    //PIPELINE
     vkDestroyPipeline(VULKAN_DEVICE, VULKAN_PIPELINE, 0);
+
+    // PIPELINE LAYOUT
     vkDestroyPipelineLayout(VULKAN_DEVICE, VULKAN_PIPELINE_LAYOUT, 0);
+
+    // SHADER MODULES
     vkDestroyShaderModule(VULKAN_DEVICE, VULKAN_SHADER_VERTEX, 0);
     vkDestroyShaderModule(VULKAN_DEVICE, VULKAN_SHADER_FRAGMENT, 0);
 
+    // DESCRIPTORS
+    vkFreeDescriptorSets(VULKAN_DEVICE, VULKAN_PIPELINE_DESCRIPTOR_POOL, VULKAN_SWAPCHAIN_IMAGE_COUNT, VULKAN_PIPELINE_DESCRIPTOR_SETS);
+    vkDestroyDescriptorPool(VULKAN_DEVICE, VULKAN_PIPELINE_DESCRIPTOR_POOL, 0);
+    vkDestroyDescriptorSetLayout(VULKAN_DEVICE, VULKAN_PIPELINE_DESCRIPTOR_SET_LAYOUT, 0);
+
+    // PIPELINE CACHE
     size_t dataSize = 0;
     vkGetPipelineCacheData(VULKAN_DEVICE, VULKAN_PIPELINE_CACHE, &dataSize, 0);
     void* data = malloc(dataSize);
     vkGetPipelineCacheData(VULKAN_DEVICE, VULKAN_PIPELINE_CACHE, &dataSize, data);
-    file_push(PIPELINE_PATH, data, dataSize);
-
+    file_push(ENGINE_DIR"/assets/pipelines/vulkan_pipeline.bin", data, dataSize);
+    free(data);
     vkDestroyPipelineCache(VULKAN_DEVICE, VULKAN_PIPELINE_CACHE, 0);
-    vkDestroyBuffer(VULKAN_DEVICE, VULKAN_BUFFER_VERTEX, 0);
-    vkFreeMemory(VULKAN_DEVICE, VULKAN_BUFFER_VERTEX_MEMORY, 0);
+
+    // INPUT BUFFERS
+    vkDestroyBuffer(VULKAN_DEVICE, VULKAN_BUFFER_VERTEX_STAGING, 0);
+    vkFreeMemory(VULKAN_DEVICE, VULKAN_BUFFER_VERTEX_MEMORY_STAGING, 0);
+    vkDestroyBuffer(VULKAN_DEVICE, VULKAN_BUFFER_INSTANCE_STAGING, 0);
+    vkFreeMemory(VULKAN_DEVICE, VULKAN_BUFFER_INSTANCE_MEMORY_STAGING, 0);
+
+    for(int i = 0; i < VULKAN_SWAPCHAIN_IMAGE_COUNT; i++){
+        vkDestroyBuffer(VULKAN_DEVICE, VULKAN_BUFFERS_VERTEX[i], 0);
+        vkFreeMemory(VULKAN_DEVICE, VULKAN_BUFFERS_VERTEX_MEMORY[i], 0);
+        vkDestroyBuffer(VULKAN_DEVICE, VULKAN_BUFFERS_INSTANCE[i], 0);
+        vkFreeMemory(VULKAN_DEVICE, VULKAN_BUFFERS_INSTANCE_MEMORY[i], 0);
+    }
+    
 }
