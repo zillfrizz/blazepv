@@ -3,23 +3,23 @@
 #include <stdio.h>
 #include <string.h>
 
-void time_init(void){
+void blaze_time_init(void){
 
 }
 
-time_t time_get(void){
+time_t blaze_time_get(void){
     return time(0);
 }
 
-time_t time_compare(time_t srcTime, time_t dstTime){
+time_t blaze_time_compare(time_t srcTime, time_t dstTime){
     return dstTime - srcTime;
 }
 
-time_t time_compare_current(time_t srcTime){
+time_t blaze_time_compare_current(time_t srcTime){
     return time(0) - srcTime;
 }
 
-char* time_string(time_t srcTime) {
+char* blaze_time_string(time_t srcTime) {
     const struct tm ltime = *localtime(&srcTime);
 
     int buffer_size = 30; 

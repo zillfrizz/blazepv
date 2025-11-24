@@ -1,8 +1,8 @@
-#include <bz_print.h>
+#include <blaze_print.h>
 #include <stdio.h>
 #include <string.h>
-#include <bz_time.h>
+#include <blaze_time.h>
 
-void print(char* data){
+void blaze_print(char* data){
     printf("%s -> %s\n", time_string_now(), data);
 }

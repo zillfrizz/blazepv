@@ -176,11 +176,23 @@ VkPipelineLayout vulkan_pipeline_layout_create(uint32_t rangeCount, VkPushConsta
     return layout;
 }
 
+// CREATE GRAPHICS PIPELINE
+VkPipeline vulkan_pipeline_graphics_create(VkGraphicsPipelineCreateInfo* pipelineInfo, VkPipelineCache cache) {  
 
-VkPipeline create_graphics_pipeline(VkShaderModule vert, VkShaderModule frag, VkPipelineLayout layout, VkPipelineCache cache) {
+    VkPipeline pipeline;
+    if (vkCreateGraphicsPipelines(VULKAN_DEVICE, cache, 1, pipelineInfo, 0, &pipeline) != VK_SUCCESS) {
+        printf("Can't create graphics pipeline.\n");
+    }
+
+    return pipeline;
+}
+
+
+VkPipeline vulkan_pipeline_1_init(VkShaderModule vert, VkShaderModule frag, VkPipelineLayout layout, VkPipelineCache cache) {
     /*
         SHADERS
     */
+
     VkPipelineShaderStageCreateInfo vertStage = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .stage = VK_SHADER_STAGE_VERTEX_BIT,
@@ -229,7 +241,10 @@ VkPipeline create_graphics_pipeline(VkShaderModule vert, VkShaderModule frag, Vk
 
     VkPipelineInputAssemblyStateCreateInfo assemblyInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-        .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
+        .flags = 0,
+        .pNext = 0,
+        .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        .primitiveRestartEnable = VK_FALSE
     };
 
     /*
@@ -313,113 +328,9 @@ VkPipeline create_graphics_pipeline(VkShaderModule vert, VkShaderModule frag, Vk
         .subpass = 0
     };
 
-    VkPipeline pipeline;
-    if (vkCreateGraphicsPipelines(VULKAN_DEVICE, cache, 1, &pipelineInfo, 0, &pipeline) != VK_SUCCESS) {
-        printf("Can't create graphics pipeline.\n");
-    }
-
-    return pipeline;
+    return vulkan_pipeline_graphics_create(&pipelineInfo, cache);
 }
 
-void create_vertex_buffer(VkBuffer* buffer, VkDeviceMemory* memory, uint32_t size) {
-    VkBufferCreateInfo bufferInfo = {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .size = size,
-        .queueFamilyIndexCount = 2,
-        .pQueueFamilyIndices = VULKAN_FAMILIES,
-        .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        .sharingMode = VK_SHARING_MODE_EXCLUSIVE
-    };
-
-    vkCreateBuffer(VULKAN_DEVICE, &bufferInfo, 0, buffer);
-
-    VkBufferMemoryRequirementsInfo2 memReqInfo = {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
-        .buffer = *buffer
-    };
-
-    VkMemoryRequirements2 memReq = {
-        .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2
-    };
-
-    vkGetBufferMemoryRequirements2(VULKAN_DEVICE, &memReqInfo, &memReq);
-
-    VkMemoryAllocateInfo allocInfo = {
-        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-        .allocationSize = memReq.memoryRequirements.size,
-        .memoryTypeIndex = vulkan_device_get_memory_type(&memReq, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-    };
-
-    vkAllocateMemory(VULKAN_DEVICE, &allocInfo, 0, memory);
-
-    VkBindBufferMemoryInfo bindInfo = {
-        .sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
-        .buffer = *buffer,
-        .memory = *memory,
-        .memoryOffset = 0,
-        .pNext = 0
-    };
-
-    vkBindBufferMemory2(VULKAN_DEVICE, 1, &bindInfo);
-}
-
-void create_vertex_staging_buffer(VkBuffer* stagingBuffer, VkDeviceMemory* stagingMemory, uint32_t size){
-    VkBufferCreateInfo bufferInfo = {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .flags = 0,
-        .pNext = 0,
-        .size = size,
-        .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        .queueFamilyIndexCount = 1,
-        .pQueueFamilyIndices = &VULKAN_FAMILIES[VULKAN_FAMILY_TRANSFER],
-        .sharingMode = VK_SHARING_MODE_EXCLUSIVE
-    };
-
-    vkCreateBuffer(VULKAN_DEVICE, &bufferInfo, 0, stagingBuffer);
-
-    VkBufferMemoryRequirementsInfo2 memReqInfo = {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
-        .buffer = *stagingBuffer
-    };
-
-    VkMemoryRequirements2 memReq = {
-        .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2
-    };
-
-    vkGetBufferMemoryRequirements2(VULKAN_DEVICE, &memReqInfo, &memReq);
-
-    VkMemoryAllocateInfo allocInfo = {
-        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-        .allocationSize = memReq.memoryRequirements.size,
-        .memoryTypeIndex = vulkan_device_get_memory_type(&memReq, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
-    };
-
-    vkAllocateMemory(VULKAN_DEVICE, &allocInfo, 0, stagingMemory);
-
-    VkBindBufferMemoryInfo bindInfo = {
-        .sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
-        .buffer = *stagingBuffer,
-        .memory = *stagingMemory,
-        .memoryOffset = 0,
-        .pNext = 0
-    };
-
-    vkBindBufferMemory2(VULKAN_DEVICE, 1, &bindInfo);
-}
-
-void fill_vertex_buffer(void* data, uint32_t size, VkBuffer* stagingBuffer, VkDeviceMemory* stagingMemory, VkBuffer* vertexBuffer, VkDeviceMemory* vertexMemory) {
-    void* map;
-
-    vkMapMemory(VULKAN_DEVICE, *stagingMemory, 0, size * 36, 0, &map);
-    memcpy(map, data, size * 36);
-    vkUnmapMemory(VULKAN_DEVICE, *stagingMemory);
-
-
-}
-
-/*
-    PUBLIC
-*/ 
 
 // 
 void vulkan_vertex_buffer_transfer(VkBuffer buffer, uint32_t transferSize, uint32_t transferOffset, void* pTransferData){
@@ -428,13 +339,13 @@ void vulkan_vertex_buffer_transfer(VkBuffer buffer, uint32_t transferSize, uint3
 
 // COMPILE/LOAD SHADERS
 void vulkan_pipeline_shaders_init(void){
-    VULKAN_SHADER_VERTEX = create_shader_module(ENGINE_DIR"/cache/shader.vert.spv", ENGINE_DIR"/assets/shaders/shader.vert");
-    VULKAN_SHADER_FRAGMENT = create_shader_module(ENGINE_DIR"/cache/shader.frag.spv", ENGINE_DIR"/assets/shaders/shader.frag");
+    VULKAN_SHADER_VERTEX = vulkan_pipeline_shader_module_load(ENGINE_DIR"/cache/shader.vert.spv", ENGINE_DIR"/assets/shaders/shader.vert");
+    VULKAN_SHADER_FRAGMENT = vulkan_pipeline_shader_module_load(ENGINE_DIR"/cache/shader.frag.spv", ENGINE_DIR"/assets/shaders/shader.frag");
 }
 
 // LOAD CACHE
 void vulkan_pipeline_cache_init(void){
-    VULKAN_PIPELINE_CACHE = create_pipeline_cache(ENGINE_DIR"/src/vulkan_pipeline.c", ENGINE_DIR"/assets/pipelines/vulkan_pipeline.bin");
+    VULKAN_PIPELINE_CACHE = vulkan_pipeline_cache_load(ENGINE_DIR"/src/vulkan_pipeline.c", ENGINE_DIR"/assets/pipelines/vulkan_pipeline.bin");
 }
 
 // CREATE PIPELINE DESCRIPTORS SETS LAYOUT, DESCRIPTOR POOL, DESCRIPTOR SETS & DESCRIPTOR SET LAYOUT
@@ -456,18 +367,18 @@ void vulkan_pipeline_description_init(void){
     // POOL
     VkDescriptorType types[] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER};
     uint32_t counts[] = {VULKAN_SWAPCHAIN_IMAGE_COUNT};
-    VULKAN_PIPELINE_DESCRIPTOR_POOL = create_pipeline_descriptor_pool(1, types, counts, VULKAN_SWAPCHAIN_IMAGE_COUNT);
+    VULKAN_PIPELINE_DESCRIPTOR_POOL = vulkan_pipeline_descriptor_pool_create(1, types, counts, VULKAN_SWAPCHAIN_IMAGE_COUNT);
 
     // SETS
 
-    VULKAN_PIPELINE_DESCRIPTOR_SETS = create_pipeline_descriptor_sets(VULKAN_PIPELINE_DESCRIPTOR_POOL, VULKAN_SWAPCHAIN_IMAGE_COUNT, layouts);
+    VULKAN_PIPELINE_DESCRIPTOR_SETS = vulkan_pipeline_descriptor_sets_create(VULKAN_PIPELINE_DESCRIPTOR_POOL, VULKAN_SWAPCHAIN_IMAGE_COUNT, layouts);
     free(layouts);
 
     // INITIALISATION WRITE ON SETS
     pipeline_init_descriptors();
 
     // PIPELINE LAYOUT
-    VULKAN_PIPELINE_LAYOUT = create_pipeline_layout();
+    VULKAN_PIPELINE_LAYOUT = vulkan_pipeline_layout_create(0, 0, 1, &VULKAN_PIPELINE_DESCRIPTOR_SET_LAYOUT);
 }
 
 // CREATE AND FILL VERTEX BUFFERS WITH INITIAL VALUES
