@@ -4,21 +4,19 @@
 #include <volk.h>
 #include <stdint.h>
 
-#include <bz_tab.h>
-
-typedef struct FreeZone{
-    VkDeviceSize start;
-    VkDeviceSize size;
-} FreeZone;
+#include <blaze_bucket.h>
 
 typedef struct VulkanHeap{
-    VkDeviceMemory handle;
-    Tab frees;
-    VkDeviceSize total;
+    VkDeviceMemory handle; // VULKAN MEMORY HANDLE
+    BucketAllocation allocator; // BUCKET ALLOCATOR
 } VulkanHeap;
 
-void vulkan_memory_pool_create(VkInstance instance, VkDevice device, VkPhysicalDevice physicalDevice, VulkanHeap* heaps);
-void vulkan_memory_heap_create(VulkanHeap* heap, VkDeviceSize heapSize, VkDeviceSize startSize);
+typedef struct VulkanMA{
+    BzTab heaps; // VULKAN HEAPS
+} VulkanMA;
+
+void vulkan_memory_ma_create(VkDevice device, VkPhysicalDevice physicalDevice, VulkanMA* ma);
+void vulkan_memory_heap_create(VkDevice device, VulkanHeap* heap, VkDeviceSize heapSize);
 
 void vulkan_memory_buffer_allocate(uint32_t heapId, VkBuffer* buffer, VkDeviceSize offset);
 void vulkan_memory_unallocate(uint32_t heapId, VkDeviceSize start, VkDeviceSize size);

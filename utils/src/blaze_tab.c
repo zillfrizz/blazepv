@@ -5,8 +5,8 @@
 #include <string.h>
     
     //INIT
-    void blaze_tab_create(BlazeTab* tab, size_t initSize, const size_t elemSize){
-        tab = malloc(sizeof(BlazeTab));
+    void blaze_tab_create(BzTab* tab, size_t initSize, const size_t elemSize){
+        tab = malloc(sizeof(BzTab));
         assert(tab);
         tab->tabSize = initSize;
         tab->front = 0;
@@ -14,8 +14,8 @@
         assert(tab->data);
     }
 
-    void blaze_tab_coherent_create(BlazeTab* tab, size_t initSize, const size_t elemSize){
-        tab = malloc(sizeof(BlazeTabCoherent));
+    void blaze_tab_coherent_create(BzTab* tab, size_t initSize, const size_t elemSize){
+        tab = malloc(sizeof(BzTabCoherent));
         assert(tab);
         tab->tabSize = initSize;
         tab->front = 0;
@@ -24,7 +24,7 @@
     }
 
     //FREE
-    void blaze_tab_free(BlazeTab* t){
+    void blaze_tab_free(BzTab* t){
         assert(t);
         free(t->data);
         t->data = NULL;
@@ -34,26 +34,26 @@
     }
 
     //ERASE
-    void blaze_tab_erase(BlazeTab* t){
+    void blaze_tab_erase(BzTab* t){
         assert(t);
         t->front = 0;
     }
 
     //POP
-    void blaze_tab_pop(BlazeTab* t, const size_t elemSize, void* data){
+    void blaze_tab_pop(BzTab* t, const size_t elemSize, void* data){
         assert(t);
         assert(t->front > 0);
         memcpy(data, t->data + --(t->front), elemSize);
     }
 
     //PUSH
-    void blaze_tab_push(BlazeTab* t, const size_t elemSize, const void* data){
+    void blaze_tab_push(BzTab* t, const size_t elemSize, const void* data){
         assert(t);
         assert(t->front < t->tabSize);
         memcpy(t->data + (t->front)++, data, elemSize);
     }
 
-    void blaze_tab_push_2X(BlazeTab*t, const size_t elemSize, const void* data){
+    void blaze_tab_push_2X(BzTab*t, const size_t elemSize, const void* data){
         assert(t);
         if(t->tabSize == t->front)
             tab_growth_2X(t, elemSize);
@@ -61,7 +61,7 @@
     }
 
     //GROWTH
-    void blaze_tab_growth_2X(BlazeTab* t, const size_t elemSize){
+    void blaze_tab_growth_2X(BzTab* t, const size_t elemSize){
         assert(t);
         t->tabSize *= 2;
         t->data = realloc(t->data, elemSize * t->tabSize);

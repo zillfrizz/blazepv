@@ -2,25 +2,25 @@
 #include <agnostic/vulkan_device.h>
 #include <stdlib.h>
 
-void vulkan_memory_pool_create(VkInstance instance, VkDevice device, VkPhysicalDevice physicalDevice, VulkanHeap* heaps){
+void vulkan_memory_ma_create(VkDevice device, VkPhysicalDevice physicalDevice, VulkanMA* ma){
     VkPhysicalDeviceMemoryProperties2 memProps;
     vulkan_device_physical_memory_properties_get(physicalDevice, &memProps);
-    heaps = malloc(sizeof(VulkanHeap) * memProps.memoryProperties.memoryHeapCount);
-    for(int i = 0; i < memProps.memoryProperties.memoryHeapCount; i++){
-        vulkan_memory_heap_create(&heaps[i], memProps.memoryProperties.memoryHeaps[i].size / 8);
+    blaze_tab_create(&(*ma).heaps, memProps.memoryProperties.memoryTypeCount, sizeof(VulkanHeap));
+
+    for(int i = 0; i < memProps.memoryProperties.memoryTypeCount; i++){
+        vulkan_memory_heap_create(device, &((VulkanHeap*)(*ma).heaps.data)[i]);
     }
 }
 
-void vulkan_memory_heap_create(VulkanHeap* heap, VkDeviceSize heapSize, VkDeviceSize startSize){
-    tab_create(&(*heap).frees, 2, sizeof(FreeZone));
-    (*heap).total = heapSize;
-    VkMemoryAllocateInfo allocInfo = {
-        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-        .pNext = 0,
-        .allocationSize = startSize,
-        .
-    };
+void vulkan_memory_heap_create(VkDevice device, VulkanHeap* heap){
+    (*heap).handle = 0;
+    blaze_bucket_allocator_create(&(*heap).allocator, 0);
+}
 
+void vulkan_memory_allocate(VkDevice device, VulkanHeap* heap, BzMemory* map, VkDeviceSize allocSize){
+    if(blaze_bucket_allocate(&(*heap).allocator, allocSize, map) != BLAZE_RETURN_SUCCESS){
+        
+    }
 }
 
 void vulkan_memory_allocate_buffer(uint32_t memoryTypeId, VkBuffer* buffer, uint32_t offset);

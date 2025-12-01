@@ -1,18 +1,20 @@
 #pragma once
 #include <stdint.h>
 #include <blaze_tab.h>
+#include <blaze_return.h>
+
+typedef uint64_t BzMemory;
+typedef uint64_t BzSize;
 
 typedef struct BucketAllocation{
-    uintptr_t handle; 
-    uint16_t binaryScope;
-    uint32_t size;
-    uint32_t head;
-    Bucket* buckets;
+    uint64_t remaining; // REMAINING UNDEFINED MEMORY
+    BzTab buckets; // BUCKETS
 } BucketAllocation;
 
 typedef struct Bucket {
-    BlazeTab ids;
+    BzTab slots; // SLOT ADRESSES
 } Bucket;
 
-void blaze_bucket_allocation_create(BucketAllocation* bucketAllocation, uintptr_t handle, uint32_t size, uint32_t binaryScope, uint32_t bucketCount);
-void blaze_bucket_allocate(BucketAllocation* bucketAllocation, uint32_t size, void* map);
+void blaze_bucket_allocator_create(BucketAllocation* bucketAllocation, BzSize size);
+BzReturn blaze_bucket_allocate(BucketAllocation* bucketAllocation, BzSize size, BzMemory* map);
+void blaze_bucket_unallocate(BucketAllocation* BucketAllocation, BzSize size, BzMemory* map);

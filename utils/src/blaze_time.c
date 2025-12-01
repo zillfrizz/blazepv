@@ -1,4 +1,4 @@
-#include <bz_time.h>
+#include <blaze_time.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
